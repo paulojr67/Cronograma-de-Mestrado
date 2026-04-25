@@ -10,12 +10,15 @@ let activePhaseFilter = null;
 
 // Sistema de progresso
 const STORAGE_KEY = 'cronograma-mestrado-progresso-v1';
+const PARTNER_STORAGE_KEY = 'cronograma-mestrado-parceiros-v1';
 let progress = {}; // { taskId: { done: bool, completedAt: ISO string, note: string } }
+let partnerStatus = {}; // { partnerId: { status, contactDate, lastContact, notes } }
 
 // ============ INIT ============
 document.addEventListener('DOMContentLoaded', async () => {
   try {
     loadProgress();
+    loadPartnerStatus();
     const res = await fetch('/api/schedule');
     SCHEDULE = await res.json();
 
@@ -27,6 +30,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderWriting();
     renderStrategy();
     renderHowTo();
+    renderPartners();
 
     setupTabs();
     setupCriticalToggle();
@@ -63,6 +67,51 @@ function isDone(taskId) {
   return !!(progress[taskId] && progress[taskId].done);
 }
 
+// ============ STATUS DE PARCERIAS ============
+function loadPartnerStatus() {
+  try {
+    const raw = localStorage.getItem(PARTNER_STORAGE_KEY);
+    if (raw) partnerStatus = JSON.parse(raw);
+  } catch (e) {
+    console.warn('Erro ao carregar status parceiros:', e);
+    partnerStatus = {};
+  }
+}
+
+function savePartnerStatus() {
+  try {
+    localStorage.setItem(PARTNER_STORAGE_KEY, JSON.stringify(partnerStatus));
+  } catch (e) {
+    console.warn('Erro ao salvar status parceiros:', e);
+  }
+}
+
+function getPartnerStatus(partnerId) {
+  const partner = SCHEDULE.partners.find(p => p.id === partnerId);
+  const userOverride = partnerStatus[partnerId];
+  return {
+    status: userOverride?.status || partner?.status || 'pending',
+    contactDate: userOverride?.contactDate,
+    lastContact: userOverride?.lastContact,
+    notes: userOverride?.notes || ''
+  };
+}
+
+function updatePartnerStatus(partnerId, updates) {
+  if (!partnerStatus[partnerId]) partnerStatus[partnerId] = {};
+  Object.assign(partnerStatus[partnerId], updates);
+  savePartnerStatus();
+  renderPartners();
+}
+
+window.updatePartnerStatus = updatePartnerStatus;
+
+const STATUS_LABELS = {
+  pending: { label: 'Pendente', color: '#94a3b8', bg: 'bg-slate-100', text: 'text-slate-700', icon: 'fa-circle-question' },
+  negotiating: { label: 'Em Negociação', color: '#f59e0b', bg: 'bg-amber-100', text: 'text-amber-800', icon: 'fa-handshake' },
+  confirmed: { label: 'Confirmada', color: '#10b981', bg: 'bg-emerald-100', text: 'text-emerald-800', icon: 'fa-circle-check' }
+};
+
 function toggleTask(taskId) {
   if (!progress[taskId]) progress[taskId] = { done: false };
   progress[taskId].done = !progress[taskId].done;
@@ -83,6 +132,7 @@ function refreshAllViews() {
   renderCriticalPath();
   renderWeeks();
   renderWriting();
+  renderPartners();
   updateProgressBar();
   // Reabrir modal se estiver aberto
   const modal = document.getElementById('task-modal');
@@ -131,6 +181,7 @@ function exportProgress() {
     exportedAt: new Date().toISOString(),
     project: 'Cronograma Mestrado S. cumini',
     progress: progress,
+    partnerStatus: partnerStatus,
     stats: getStats()
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -155,6 +206,10 @@ function importProgress(event) {
         if (confirm('Isso substituirá seu progresso atual. Continuar?')) {
           progress = data.progress;
           saveProgress();
+          if (data.partnerStatus) {
+            partnerStatus = data.partnerStatus;
+            savePartnerStatus();
+          }
           refreshAllViews();
           showToast('✓ Progresso importado com sucesso!');
         }
@@ -170,9 +225,11 @@ function importProgress(event) {
 }
 
 function resetProgress() {
-  if (!confirm('Tem certeza? Todo o progresso e anotações serão APAGADOS. Esta ação não pode ser desfeita.')) return;
+  if (!confirm('Tem certeza? Todo o progresso, anotações e status de parcerias serão APAGADOS. Esta ação não pode ser desfeita.')) return;
   progress = {};
+  partnerStatus = {};
   saveProgress();
+  savePartnerStatus();
   refreshAllViews();
   showToast('Progresso resetado.', 'warning');
 }
@@ -198,8 +255,28 @@ function getPhase(id) {
   return SCHEDULE.phases.find(p => p.id === id);
 }
 
+function getPartner(id) {
+  return SCHEDULE.partners?.find(p => p.id === id);
+}
+
 function isCritical(taskId) {
   return SCHEDULE.criticalPath.includes(taskId);
+}
+
+// Badge visual para localização da tarefa
+function locationBadgeHTML(task) {
+  const partner = getPartner(task.partnerId);
+  if (!partner || partner.id === 'home') {
+    return `<span class="text-[10px] inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-teal-100 text-teal-800 border border-teal-200" title="Lab local">
+      <i class="fa-solid fa-house-laptop"></i>Local
+    </span>`;
+  }
+  const status = getPartnerStatus(partner.id);
+  const cfg = STATUS_LABELS[status.status];
+  return `<span class="text-[10px] inline-flex items-center gap-1 px-1.5 py-0.5 rounded border" style="background:${partner.color}15; border-color:${partner.color}; color:${partner.color}" title="${partner.institution} — ${cfg.label}">
+    <i class="fa-solid ${partner.icon}"></i>${partner.shortName}
+    ${task.shippingNeeded ? '<i class="fa-solid fa-truck-fast ml-1" title="Requer envio"></i>' : ''}
+  </span>`;
 }
 
 // ============ TABS ============
@@ -440,6 +517,8 @@ function taskRowHTML(task) {
             ${critical ? '<span class="text-[10px] font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded-full"><i class="fa-solid fa-fire mr-1"></i>CRÍTICA</span>' : ''}
             ${task.type === 'milestone' ? '<span class="text-[10px] font-bold text-yellow-800 bg-yellow-100 px-2 py-0.5 rounded-full"><i class="fa-solid fa-flag mr-1"></i>MARCO</span>' : ''}
             ${done ? `<span class="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full"><i class="fa-solid fa-check mr-1"></i>CONCLUÍDA</span>` : ''}
+            ${locationBadgeHTML(task)}
+            ${task.bufferWeeks ? `<span class="text-[10px] inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200" title="Buffer de ${task.bufferWeeks}sem para imprevistos"><i class="fa-solid fa-shield-halved"></i>+${task.bufferWeeks}sem</span>` : ''}
             <span class="text-[10px] font-semibold text-slate-500">Semana ${task.startWeek}${task.endWeek !== task.startWeek ? '–' + task.endWeek : ''}</span>
           </div>
           <h4 class="font-semibold text-sm ${done ? 'line-through text-slate-500' : 'text-slate-800'}">${task.name}</h4>
@@ -1005,6 +1084,316 @@ function faqHTML(question, answer) {
   `;
 }
 
+// ============ PARCERIAS ============
+function renderPartners() {
+  const container = document.getElementById('partners-container');
+  if (!container) return;
+
+  const externalPartners = SCHEDULE.partners.filter(p => p.id !== 'home');
+  const homePartner = SCHEDULE.partners.find(p => p.id === 'home');
+
+  // Estatísticas das parcerias
+  const total = externalPartners.length;
+  const confirmed = externalPartners.filter(p => getPartnerStatus(p.id).status === 'confirmed').length;
+  const negotiating = externalPartners.filter(p => getPartnerStatus(p.id).status === 'negotiating').length;
+  const pending = externalPartners.filter(p => getPartnerStatus(p.id).status === 'pending').length;
+
+  container.innerHTML = `
+    <!-- HERO -->
+    <div class="bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-700 text-white rounded-2xl shadow-xl p-6 mb-6">
+      <div class="flex items-start justify-between gap-4 flex-wrap">
+        <div class="flex-1 min-w-[260px]">
+          <h2 class="text-2xl font-bold mb-2">
+            <i class="fa-solid fa-handshake mr-2"></i>Gestão de Parcerias
+          </h2>
+          <p class="text-blue-100 text-sm leading-relaxed">
+            Este projeto depende de <strong>${total} parcerias externas</strong> em ${new Set(externalPartners.map(p=>p.state)).size} estados (PB, PI, CE).
+            Tarefas em laboratórios parceiros estão <strong>fora do seu controle direto</strong> — comunicação proativa é essencial.
+          </p>
+        </div>
+        <div class="grid grid-cols-3 gap-2 text-center">
+          <div class="bg-emerald-400/20 backdrop-blur rounded-lg px-3 py-2 border border-emerald-300/30">
+            <div class="text-2xl font-black text-emerald-200">${confirmed}</div>
+            <div class="text-[10px] uppercase tracking-wider text-emerald-100">Confirmadas</div>
+          </div>
+          <div class="bg-amber-400/20 backdrop-blur rounded-lg px-3 py-2 border border-amber-300/30">
+            <div class="text-2xl font-black text-amber-200">${negotiating}</div>
+            <div class="text-[10px] uppercase tracking-wider text-amber-100">Negociando</div>
+          </div>
+          <div class="bg-slate-400/20 backdrop-blur rounded-lg px-3 py-2 border border-slate-300/30">
+            <div class="text-2xl font-black text-slate-200">${pending}</div>
+            <div class="text-[10px] uppercase tracking-wider text-slate-100">Pendentes</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ALERTA: REGRA DE OURO -->
+    <div class="bg-gradient-to-r from-red-50 to-orange-50 border-l-4 border-red-500 rounded-lg p-4 mb-6">
+      <h3 class="font-bold text-red-900 mb-2 text-sm">
+        <i class="fa-solid fa-circle-exclamation mr-2"></i>REGRA DE OURO: comunicação proativa salva o cronograma
+      </h3>
+      <ul class="text-xs text-red-800 space-y-1">
+        <li><i class="fa-solid fa-check mr-2"></i><strong>Semana 1:</strong> contate TODOS os parceiros formalmente (e-mail + videochamada)</li>
+        <li><i class="fa-solid fa-check mr-2"></i><strong>Semanal:</strong> envie atualização de status (foto, número, tabela) para cada parceiro ativo</li>
+        <li><i class="fa-solid fa-check mr-2"></i><strong>Antes do envio:</strong> sempre alinhe data/horário esperado de chegada com o destinatário</li>
+        <li><i class="fa-solid fa-check mr-2"></i><strong>UECE:</strong> o cronograma deles dita o seu. Pactue datas <em>antes</em> de prometer entregas ao orientador</li>
+      </ul>
+    </div>
+
+    <!-- CARDS DE PARCEIROS -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+      ${externalPartners.map(p => partnerCardHTML(p)).join('')}
+    </div>
+
+    <!-- LAB LOCAL -->
+    <div class="bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200 rounded-xl p-5 mb-6">
+      <div class="flex items-center gap-3 mb-2">
+        <div class="w-12 h-12 rounded-lg flex items-center justify-center" style="background:${homePartner.color}">
+          <i class="fa-solid ${homePartner.icon} text-white text-xl"></i>
+        </div>
+        <div>
+          <h3 class="font-bold text-teal-900">${homePartner.name}</h3>
+          <p class="text-xs text-teal-700">${homePartner.institution}</p>
+        </div>
+      </div>
+      <div class="text-xs text-teal-800 mb-3">${homePartner.notes || ''}</div>
+      <div class="text-xs text-teal-700">
+        <strong>Capacidades locais:</strong> ${homePartner.capabilities.join(' · ')}
+      </div>
+      <div class="mt-3 text-xs">
+        <span class="font-bold text-teal-900">${SCHEDULE.tasks.filter(t => t.partnerId === 'home').length} tarefas</span> realizadas localmente
+      </div>
+    </div>
+
+    <!-- TIMELINE DE ENVIOS -->
+    ${shippingTimelineHTML()}
+
+    <!-- CHECKLIST DE GESTÃO -->
+    ${managementChecklistHTML()}
+  `;
+}
+
+function partnerCardHTML(partner) {
+  const status = getPartnerStatus(partner.id);
+  const cfg = STATUS_LABELS[status.status];
+  const partnerTasks = SCHEDULE.tasks.filter(t => t.partnerId === partner.id);
+  const doneTasks = partnerTasks.filter(t => isDone(t.id)).length;
+  const criticalTasks = partnerTasks.filter(t => isCritical(t.id)).length;
+
+  return `
+    <div class="bg-white rounded-xl shadow-sm border-2 overflow-hidden" style="border-color:${partner.color}40">
+      <!-- Header -->
+      <div class="p-4 border-b" style="background:${partner.color}10; border-color:${partner.color}30">
+        <div class="flex items-start justify-between gap-2 mb-2 flex-wrap">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0" style="background:${partner.color}">
+              <i class="fa-solid ${partner.icon} text-white text-xl"></i>
+            </div>
+            <div class="min-w-0">
+              <h3 class="font-bold text-base" style="color:${partner.color}">${partner.shortName}</h3>
+              <p class="text-xs text-slate-700">${partner.institution}</p>
+              <p class="text-[11px] text-slate-500"><i class="fa-solid fa-location-dot mr-1"></i>${partner.city}, ${partner.state}</p>
+            </div>
+          </div>
+          <span class="text-[10px] font-bold ${cfg.bg} ${cfg.text} px-2 py-1 rounded-full whitespace-nowrap">
+            <i class="fa-solid ${cfg.icon} mr-1"></i>${cfg.label}
+          </span>
+        </div>
+        ${partner.contact ? `<div class="text-xs text-slate-700"><i class="fa-solid fa-user mr-1 text-slate-500"></i>${partner.contact}</div>` : ''}
+      </div>
+
+      <!-- Body -->
+      <div class="p-4 space-y-3">
+        ${partner.notes ? `<div class="text-xs text-slate-700 italic bg-slate-50 p-2 rounded border-l-2" style="border-color:${partner.color}">"${partner.notes}"</div>` : ''}
+
+        <div>
+          <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Capacidades</div>
+          <div class="flex flex-wrap gap-1">
+            ${partner.capabilities.map(c => `<span class="text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded">${c}</span>`).join('')}
+          </div>
+        </div>
+
+        <!-- Status Selector -->
+        <div>
+          <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Status da Parceria</div>
+          <div class="flex gap-1">
+            ${['pending', 'negotiating', 'confirmed'].map(s => {
+              const sCfg = STATUS_LABELS[s];
+              const active = status.status === s;
+              return `<button onclick="window.setPartnerStatus('${partner.id}', '${s}')"
+                class="flex-1 text-[10px] px-2 py-1.5 rounded font-semibold transition border ${active ? sCfg.bg + ' ' + sCfg.text + ' border-current' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}">
+                <i class="fa-solid ${sCfg.icon} mr-1"></i>${sCfg.label}
+              </button>`;
+            }).join('')}
+          </div>
+        </div>
+
+        <!-- Tarefas -->
+        <div>
+          <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+            ${partnerTasks.length} tarefas · ${doneTasks} concluídas · ${criticalTasks} críticas
+          </div>
+          <div class="space-y-1 max-h-40 overflow-y-auto">
+            ${partnerTasks.map(t => {
+              const done = isDone(t.id);
+              const crit = isCritical(t.id);
+              return `<div class="flex items-center gap-2 text-xs p-1.5 rounded hover:bg-slate-50 cursor-pointer ${done ? 'opacity-60' : ''}" onclick="openModal('${t.id}')">
+                ${checkboxHTML(t.id, 'sm')}
+                <span class="font-mono text-[9px] text-slate-400">${t.id}</span>
+                <span class="text-[10px] text-slate-500">S${t.startWeek}${t.endWeek !== t.startWeek ? '-' + t.endWeek : ''}</span>
+                ${crit ? '<i class="fa-solid fa-fire text-red-500 text-[9px]"></i>' : ''}
+                ${t.shippingNeeded ? '<i class="fa-solid fa-truck-fast text-amber-500 text-[9px]" title="Envio"></i>' : ''}
+                <span class="${done ? 'line-through text-slate-400' : 'text-slate-700'} truncate flex-1">${t.name.replace(/^[🚨🤝📦⏳📊]+\s*/, '')}</span>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+
+        <!-- Anotações pessoais sobre parceria -->
+        <div>
+          <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+            <i class="fa-solid fa-note-sticky mr-1"></i>Anotações da parceria
+          </div>
+          <textarea
+            class="w-full text-xs border border-slate-300 rounded p-2 focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 outline-none transition"
+            rows="2"
+            placeholder="Ex.: contato realizado em 20/05, agenda para 03/06..."
+            onblur="window.setPartnerNote('${partner.id}', this.value)">${escapeHtml(status.notes || '')}</textarea>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+window.setPartnerStatus = function(partnerId, status) {
+  updatePartnerStatus(partnerId, { status, lastContact: new Date().toISOString() });
+  showToast(`✓ Parceria ${SCHEDULE.partners.find(p=>p.id===partnerId).shortName}: ${STATUS_LABELS[status].label}`);
+}
+
+window.setPartnerNote = function(partnerId, note) {
+  updatePartnerStatus(partnerId, { notes: note });
+}
+
+function shippingTimelineHTML() {
+  const shipments = SCHEDULE.tasks.filter(t => t.shippingNeeded).sort((a, b) => a.startWeek - b.startWeek);
+  return `
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-6">
+      <div class="p-4 border-b border-slate-200 bg-amber-50">
+        <h3 class="font-bold text-amber-900">
+          <i class="fa-solid fa-truck-fast mr-2"></i>Cronograma de Envios de Amostras
+        </h3>
+        <p class="text-xs text-amber-700 mt-1">Cada envio precisa ser planejado: embalagem, gelo seco se aplicável, rastreio, comunicação prévia com o destinatário.</p>
+      </div>
+      <div class="divide-y divide-slate-100">
+        ${shipments.map(t => {
+          const partner = getPartner(t.partnerId);
+          const done = isDone(t.id);
+          return `
+            <div class="p-3 flex items-center gap-3 hover:bg-slate-50 cursor-pointer ${done ? 'opacity-60' : ''}" onclick="openModal('${t.id}')">
+              ${checkboxHTML(t.id, 'sm')}
+              <div class="flex-shrink-0 w-12 text-center">
+                <div class="text-xs font-bold text-amber-700">S${t.startWeek}</div>
+                <div class="text-[10px] text-slate-500">${SCHEDULE.weeks[t.startWeek-1].startDate}</div>
+              </div>
+              <i class="fa-solid fa-truck-fast text-amber-500"></i>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-semibold ${done ? 'line-through' : ''} text-slate-800 truncate">${t.name}</div>
+                <div class="text-xs text-slate-500"><i class="fa-solid fa-arrow-right mx-1"></i>${partner.name} (${partner.city}/${partner.state})</div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function managementChecklistHTML() {
+  return `
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-6">
+      <div class="p-4 border-b border-slate-200 bg-slate-50">
+        <h3 class="font-bold text-slate-800">
+          <i class="fa-solid fa-list-check mr-2 text-indigo-600"></i>Checklist de Gestão de Parcerias
+        </h3>
+      </div>
+      <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <h4 class="text-sm font-bold text-slate-800 mb-2"><i class="fa-solid fa-rocket text-emerald-600 mr-1"></i>Antes de Iniciar (S1)</h4>
+          <ul class="text-xs text-slate-700 space-y-1.5">
+            <li class="flex gap-2"><i class="fa-regular fa-square text-slate-400 mt-0.5"></i>E-mail formal a cada parceiro com proposta + cronograma estimado</li>
+            <li class="flex gap-2"><i class="fa-regular fa-square text-slate-400 mt-0.5"></i>Videochamada de alinhamento (mín. 30 min cada)</li>
+            <li class="flex gap-2"><i class="fa-regular fa-square text-slate-400 mt-0.5"></i>Definir contato direto (e-mail/WhatsApp) por parceria</li>
+            <li class="flex gap-2"><i class="fa-regular fa-square text-slate-400 mt-0.5"></i>Solicitar autorização CEUA via UECE (4-8sem!)</li>
+            <li class="flex gap-2"><i class="fa-regular fa-square text-slate-400 mt-0.5"></i>Termo de cooperação ou MTA quando aplicável</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="text-sm font-bold text-slate-800 mb-2"><i class="fa-solid fa-truck-fast text-amber-600 mr-1"></i>Para Cada Envio</h4>
+          <ul class="text-xs text-slate-700 space-y-1.5">
+            <li class="flex gap-2"><i class="fa-regular fa-square text-slate-400 mt-0.5"></i>Confirmar disponibilidade do parceiro 1 sem antes</li>
+            <li class="flex gap-2"><i class="fa-regular fa-square text-slate-400 mt-0.5"></i>Embalagem adequada (gelo seco se necessário)</li>
+            <li class="flex gap-2"><i class="fa-regular fa-square text-slate-400 mt-0.5"></i>Sedex/transportadora com RASTREIO</li>
+            <li class="flex gap-2"><i class="fa-regular fa-square text-slate-400 mt-0.5"></i>Reservar alíquotas de segurança no lab</li>
+            <li class="flex gap-2"><i class="fa-regular fa-square text-slate-400 mt-0.5"></i>Anexar protocolo + ficha técnica</li>
+            <li class="flex gap-2"><i class="fa-regular fa-square text-slate-400 mt-0.5"></i>Confirmar recebimento por e-mail/WhatsApp</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="text-sm font-bold text-slate-800 mb-2"><i class="fa-solid fa-comments text-blue-600 mr-1"></i>Comunicação Contínua</h4>
+          <ul class="text-xs text-slate-700 space-y-1.5">
+            <li class="flex gap-2"><i class="fa-regular fa-square text-slate-400 mt-0.5"></i>Update semanal de status (sexta-feira)</li>
+            <li class="flex gap-2"><i class="fa-regular fa-square text-slate-400 mt-0.5"></i>Reunião quinzenal com cada parceiro ativo</li>
+            <li class="flex gap-2"><i class="fa-regular fa-square text-slate-400 mt-0.5"></i>Solicitar protocolos detalhados deles para M&M</li>
+            <li class="flex gap-2"><i class="fa-regular fa-square text-slate-400 mt-0.5"></i>Documentar tudo (e-mails arquivados!)</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="text-sm font-bold text-slate-800 mb-2"><i class="fa-solid fa-shield-halved text-red-600 mr-1"></i>Plano B (Mitigação)</h4>
+          <ul class="text-xs text-slate-700 space-y-1.5">
+            <li class="flex gap-2"><i class="fa-regular fa-square text-slate-400 mt-0.5"></i>UFPI como backup do LIMAV (FTIR)</li>
+            <li class="flex gap-2"><i class="fa-regular fa-square text-slate-400 mt-0.5"></i>HPLC-DAD interno como backup do LC-MS</li>
+            <li class="flex gap-2"><i class="fa-regular fa-square text-slate-400 mt-0.5"></i>Se UECE atrasar: priorizar in vitro como prova de conceito</li>
+            <li class="flex gap-2"><i class="fa-regular fa-square text-slate-400 mt-0.5"></i>Manter alíquotas de segurança de TODAS as amostras</li>
+            <li class="flex gap-2"><i class="fa-regular fa-square text-slate-400 mt-0.5"></i>Documentar atrasos para justificar à banca</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEMPLATE DE E-MAIL -->
+    <div class="bg-slate-900 text-slate-100 rounded-xl p-6">
+      <h3 class="font-bold text-base mb-3 text-emerald-400">
+        <i class="fa-solid fa-envelope mr-2"></i>Template de E-mail Inicial (copie e adapte)
+      </h3>
+      <pre class="text-xs bg-slate-800 p-4 rounded overflow-x-auto whitespace-pre-wrap text-slate-200 leading-relaxed">Assunto: [PARCERIA] Mestrado - Caracterização de nanoformulação de S. cumini
+
+Prezado(a) Prof.(a) [NOME],
+
+Sou [SEU NOME], aluno(a) de mestrado do programa [SEU PPG], sob orientação
+do(a) Prof.(a) [ORIENTADOR]. Estou desenvolvendo um projeto sobre
+nanoformulação polimérica de Syzygium cumini com potencial neuroprotetor
+contra Alzheimer, com qualificação prevista para 31/Ago/2026.
+
+Gostaria de propor uma parceria para [LC-MS/MS / FESEM / DLS / zebrafish],
+conforme atribuições do laboratório.
+
+Cronograma proposto:
+- Envio de amostras: [DATA]
+- Análises: [DATA]
+- Devolução de dados: [DATA]
+
+Posso enviar o projeto completo e o protocolo das amostras para sua
+avaliação. Agradeço pela atenção e fico à disposição para uma
+videochamada de alinhamento.
+
+Atenciosamente,
+[SEU NOME]
+[CONTATO]</pre>
+    </div>
+  `;
+}
+
 // ============ MODAL ============
 function setupModal() {
   const modal = document.getElementById('task-modal');
@@ -1088,6 +1477,28 @@ window.openModal = function(taskId) {
           <p class="text-sm text-emerald-900 font-medium">${task.deliverable}</p>
         </div>
       ` : ''}
+
+      ${(() => {
+        const partner = getPartner(task.partnerId);
+        if (!partner || partner.id === 'home') return '';
+        const status = getPartnerStatus(partner.id);
+        const cfg = STATUS_LABELS[status.status];
+        return `
+          <div class="border-l-4 p-3 rounded" style="border-color:${partner.color}; background:${partner.color}10">
+            <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
+              <h4 class="text-xs font-bold uppercase tracking-wider" style="color:${partner.color}">
+                <i class="fa-solid ${partner.icon} mr-1"></i>Parceiro Externo
+              </h4>
+              <span class="text-[10px] font-bold ${cfg.bg} ${cfg.text} px-2 py-0.5 rounded-full"><i class="fa-solid ${cfg.icon} mr-1"></i>${cfg.label}</span>
+            </div>
+            <div class="text-sm font-bold" style="color:${partner.color}">${partner.name}</div>
+            <div class="text-xs text-slate-600">${partner.institution} · ${partner.city}/${partner.state}</div>
+            ${task.shippingNeeded ? '<div class="text-xs text-amber-700 mt-1"><i class="fa-solid fa-truck-fast mr-1"></i>Requer envio de amostras</div>' : ''}
+            ${task.bufferWeeks ? `<div class="text-xs text-amber-700"><i class="fa-solid fa-shield-halved mr-1"></i>Buffer de +${task.bufferWeeks}sem embutido (prazo fora do controle direto)</div>` : ''}
+            ${partner.notes ? `<div class="text-xs text-slate-700 mt-2 italic">"${partner.notes}"</div>` : ''}
+          </div>
+        `;
+      })()}
 
       <!-- Anotação -->
       <div>

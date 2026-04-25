@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { renderer } from './renderer'
-import { tasks, phases, weeks, criticalPath, stats } from './data/schedule'
+import { tasks, phases, weeks, criticalPath, stats, partners } from './data/schedule'
 
 const app = new Hono()
 
@@ -8,7 +8,7 @@ app.use(renderer)
 
 // API: dados do cronograma em JSON
 app.get('/api/schedule', (c) => {
-  return c.json({ tasks, phases, weeks, criticalPath, stats })
+  return c.json({ tasks, phases, weeks, criticalPath, stats, partners })
 })
 
 // API: tarefas filtradas por fase
@@ -22,6 +22,14 @@ app.get('/api/tasks/:phaseId', (c) => {
 app.get('/api/critical-path', (c) => {
   const criticalTasks = tasks.filter(t => criticalPath.includes(t.id))
   return c.json({ count: criticalTasks.length, tasks: criticalTasks })
+})
+
+// API: tarefas por parceiro
+app.get('/api/partners/:partnerId', (c) => {
+  const partnerId = c.req.param('partnerId')
+  const partner = partners.find(p => p.id === partnerId)
+  const partnerTasks = tasks.filter(t => t.partnerId === partnerId)
+  return c.json({ partner, count: partnerTasks.length, tasks: partnerTasks })
 })
 
 // Página principal
@@ -48,22 +56,26 @@ app.get('/', (c) => {
                 {stats.startDate} → <strong>{stats.endDate}</strong>
               </p>
             </div>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
-              <div class="bg-white/10 backdrop-blur rounded-lg px-4 py-3 border border-white/20">
-                <div class="text-3xl font-black">{stats.totalWeeks}</div>
-                <div class="text-xs uppercase tracking-wider text-emerald-100">Semanas</div>
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-2 text-center">
+              <div class="bg-white/10 backdrop-blur rounded-lg px-3 py-3 border border-white/20">
+                <div class="text-2xl md:text-3xl font-black">{stats.totalWeeks}</div>
+                <div class="text-[10px] uppercase tracking-wider text-emerald-100">Semanas</div>
               </div>
-              <div class="bg-white/10 backdrop-blur rounded-lg px-4 py-3 border border-white/20">
-                <div class="text-3xl font-black">{stats.totalTasks}</div>
-                <div class="text-xs uppercase tracking-wider text-emerald-100">Tarefas</div>
+              <div class="bg-white/10 backdrop-blur rounded-lg px-3 py-3 border border-white/20">
+                <div class="text-2xl md:text-3xl font-black">{stats.totalTasks}</div>
+                <div class="text-[10px] uppercase tracking-wider text-emerald-100">Tarefas</div>
               </div>
-              <div class="bg-red-500/30 backdrop-blur rounded-lg px-4 py-3 border border-red-300/40">
-                <div class="text-3xl font-black">{stats.criticalTasks}</div>
-                <div class="text-xs uppercase tracking-wider text-red-100">Críticas</div>
+              <div class="bg-red-500/30 backdrop-blur rounded-lg px-3 py-3 border border-red-300/40">
+                <div class="text-2xl md:text-3xl font-black">{stats.criticalTasks}</div>
+                <div class="text-[10px] uppercase tracking-wider text-red-100">Críticas</div>
               </div>
-              <div class="bg-yellow-400/30 backdrop-blur rounded-lg px-4 py-3 border border-yellow-200/40">
-                <div class="text-3xl font-black">{stats.milestones}</div>
-                <div class="text-xs uppercase tracking-wider text-yellow-100">Marcos</div>
+              <div class="bg-yellow-400/30 backdrop-blur rounded-lg px-3 py-3 border border-yellow-200/40">
+                <div class="text-2xl md:text-3xl font-black">{stats.milestones}</div>
+                <div class="text-[10px] uppercase tracking-wider text-yellow-100">Marcos</div>
+              </div>
+              <div class="bg-blue-500/30 backdrop-blur rounded-lg px-3 py-3 border border-blue-300/40">
+                <div class="text-2xl md:text-3xl font-black">{stats.partners}</div>
+                <div class="text-[10px] uppercase tracking-wider text-blue-100">Parceiros</div>
               </div>
             </div>
           </div>
@@ -82,6 +94,9 @@ app.get('/', (c) => {
             </button>
             <button data-tab="critical" class="tab-btn px-5 py-4 text-sm font-semibold border-b-2 border-transparent text-slate-600 hover:text-emerald-700 whitespace-nowrap">
               <i class="fa-solid fa-route mr-2"></i>Caminho Crítico
+            </button>
+            <button data-tab="partners" class="tab-btn px-5 py-4 text-sm font-semibold border-b-2 border-transparent text-slate-600 hover:text-emerald-700 whitespace-nowrap">
+              <i class="fa-solid fa-handshake mr-2"></i>Parcerias
             </button>
             <button data-tab="weeks" class="tab-btn px-5 py-4 text-sm font-semibold border-b-2 border-transparent text-slate-600 hover:text-emerald-700 whitespace-nowrap">
               <i class="fa-solid fa-calendar-week mr-2"></i>Semana a Semana
@@ -181,6 +196,10 @@ app.get('/', (c) => {
 
         <section id="tab-weeks" class="tab-content hidden">
           <div id="weeks-container" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+        </section>
+
+        <section id="tab-partners" class="tab-content hidden">
+          <div id="partners-container"></div>
         </section>
 
         <section id="tab-writing" class="tab-content hidden">

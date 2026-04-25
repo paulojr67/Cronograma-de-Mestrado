@@ -7,22 +7,26 @@
 
 ## Funcionalidades Implementadas
 
-### 7 Visualizações Interativas
-1. **Gráfico de Gantt** — visão geral de 16 semanas com barras coloridas por fase, destaque do caminho crítico (animação pulsante), filtro por fase clicando nas chips, e modal detalhado ao clicar em qualquer tarefa
-2. **Por Fase** — agrupamento das 33 tarefas pelas 8 fases do projeto, com mini barra de progresso por fase
-3. **Caminho Crítico** — sequência das 25 tarefas que NÃO podem atrasar, em formato de linha do tempo conectada
-4. **Semana a Semana** — 16 cards (um por semana) mostrando todas as tarefas ativas em cada semana, com destaque especial para a semana da qualificação (S16)
-5. **Plano de Escrita** — 5 dicas práticas + cronograma dos capítulos da dissertação em paralelo aos experimentos
-6. **Estratégia Q1** — princípios do cronograma, riscos & mitigações, revistas-alvo, checklist mínimo Q1, plano pós-qualificação e hierarquia de prioridades
-7. **Como Usar** — guia completo de uso, fluxo recomendado, FAQ e atalhos
+### 8 Visualizações Interativas
+1. **Gráfico de Gantt** — 44 tarefas em 16 semanas, barras coloridas por fase, badges de localização (Lab Local / parceiro)
+2. **Por Fase** — agrupamento das tarefas pelas 8 fases do projeto, com mini barra de progresso por fase
+3. **Caminho Crítico** — sequência das 34 tarefas que NÃO podem atrasar
+4. **Parcerias** ⭐ — gestão completa das 5 parcerias externas (UFPB, LIMAV, IFPI, UFPI, UECE), checklist, timeline de envios, template de e-mail
+5. **Semana a Semana** — 16 cards mostrando todas as tarefas ativas em cada semana
+6. **Plano de Escrita** — dicas + cronograma dos capítulos da dissertação em paralelo
+7. **Estratégia Q1** — princípios, riscos & mitigações, revistas-alvo, checklist mínimo Q1
+8. **Como Usar** — guia completo de uso, fluxo recomendado, FAQ e atalhos
 
 ### Recursos UX
 - ✅ **Sistema de checkboxes** em todas as visualizações com persistência em localStorage
 - 📊 **Barra de progresso global** sticky no topo (geral + crítico)
-- 📝 **Anotações por tarefa** salvas localmente (textarea no modal)
-- 💾 **Export / Import / Reset** do progresso em formato JSON
+- 🤝 **Tracking de parcerias**: pendente → negociando → confirmada (clicável)
+- 🚚 **Ícones de envio** (truck) para tarefas que requerem logística
+- 🛡️ **Buffer de tempo visível** (+1sem, +2sem) para tarefas externas
+- 📝 **Anotações por tarefa e por parceiro** salvas localmente
+- 💾 **Export / Import / Reset** do progresso + status de parcerias em JSON
 - 🔥 **Toggle de Caminho Crítico** que destaca apenas as tarefas críticas
-- 🎨 **Filtro por Fase** clicando nas chips coloridas da legenda
+- 🎨 **Filtro por Fase** clicando nas chips coloridas
 - 🚦 **Marcos GO/NO-GO** identificados visualmente (M1, M2, M3)
 - 📱 **Design responsivo** com Tailwind CSS
 - 🖨️ **Pronto para impressão** (Ctrl+P gera PDF estilizado)
@@ -30,16 +34,25 @@
 
 ## Estrutura do Cronograma
 
-| Período | Fase | Semanas |
-|---|---|---|
-| 18/Mai – 07/Jun | Extração e Fracionamento (parâmetros DA ROSA et al. 2024) | S1–S3 |
-| 01/Jun – 21/Jun | Caracterização Química (LC-MS/MS, GC-MS) | S3–S5 |
-| 08/Jun – 05/Jul | Nanoformulação Gelatina/PLA (RAJKUMAR et al. 2025) | S4–S7 |
-| 22/Jun – 26/Jul | Caracterização da NP (UV-Vis, FTIR, XRD, FESEM, DLS, ZP, liberação) | S6–S10 |
-| 06/Jul – 02/Ago | Ensaios In Vitro (AChE/BChE + SH-SY5Y) | S8–S11 |
-| 13/Jul – 16/Ago | Zebrafish (CL50, ansiedade, locomoção, memória) | S9–S13 |
-| 18/Mai – 30/Ago | Escrita da Dissertação (paralelo) | S1–S15 |
-| 31/Ago | 🎓 **QUALIFICAÇÃO** | S16 |
+| Período | Fase | Local | Semanas |
+|---|---|---|---|
+| 18/Mai – 07/Jun | Extração e Fracionamento (DA ROSA et al. 2024) | 🏠 Lab Local | S1–S3 |
+| 01/Jun – 28/Jun | Caracterização Química (LC-MS/MS, GC-MS) | 🔬 **UFPB / Anauara** | S3–S6 |
+| 08/Jun – 12/Jul | Nanoformulação Gelatina/PLA (RAJKUMAR et al. 2025) | 🏠 Lab Local | S4–S8 |
+| 29/Jun – 02/Ago | DLS / Potencial Zeta / UV-Vis | ⚛️ **IFPI** | S7–S11 |
+| 13/Jul – 02/Ago | FESEM / HRTEM / XRD / FTIR | 🔬 **LIMAV (UFPI)** | S9–S11 |
+| 06/Jul – 09/Ago | Ensaios In Vitro (AChE/BChE + SH-SY5Y) | 🏠 Lab Local | S8–S12 |
+| 18/Mai – 16/Ago | Zebrafish (CEUA + comportamento) | 🐟 **UECE / CE** | S1–S13 |
+| 18/Mai – 30/Ago | Escrita da Dissertação (paralelo) | 🏠 Lab Local | S1–S15 |
+| 31/Ago | 🎓 **QUALIFICAÇÃO** | 🏠 Lab Local | S16 |
+
+### Parceiros Externos
+- **🏠 Lab Local** — Base, maior controle. Extração, NP, in vitro, escrita.
+- **🔬 UFPB / Profa. Anauara** (João Pessoa-PB) — LC-MS/MS, GC-MS, identificação de Escutelareína/Friedelina
+- **⚛️ IFPI** (Teresina-PI) — DLS, Potencial Zeta, UV-Vis (feedback rápido para otimização)
+- **🔬 LIMAV / UFPI** (Teresina-PI) — FESEM, HRTEM, XRD, FTIR (caracterização morfológica/estrutural)
+- **🔬 UFPI** (Teresina-PI) — Backup de FTIR e HPLC
+- **🐟 UECE** (Fortaleza-CE) — **CRÍTICO**: zebrafish, CEUA, todos os ensaios comportamentais
 
 ### Marcos Críticos
 - **M1 (S5)**: GO/NO-GO seleção da fração mais promissora (Hexano vs Acetato)
@@ -58,6 +71,10 @@
 
 ### Identificadores de Fase (para `/api/tasks/:phaseId`)
 `extraction` · `chemistry` · `nano` · `characterization` · `invitro` · `invivo` · `writing` · `milestone`
+
+### Endpoint de Parcerias
+- `GET /api/partners/:partnerId` — tarefas de um parceiro específico
+- IDs de parceiros: `home` · `ufpb-anauara` · `limav` · `ifpi` · `ufpi` · `uece`
 
 ### Acesso Local (Sandbox)
 - **Sandbox**: porta 3000 — usar `GetServiceUrl` para URL pública
