@@ -64,8 +64,24 @@ body {
 
 /* Print friendly */
 @media print {
-  nav, .tab-btn, #toggle-critical { display: none !important; }
+  nav, .tab-btn, #toggle-critical, #btn-export, #btn-reset, #file-import + label { display: none !important; }
   .tab-content { display: block !important; }
+  .sticky { position: static !important; }
+}
+
+/* Checkbox hover */
+.task-checkbox:hover {
+  transform: scale(1.1);
+}
+
+/* Details/summary (FAQ) - remove default arrow */
+details summary::-webkit-details-marker { display: none; }
+details summary { list-style: none; }
+
+/* Toast slide animation */
+@keyframes slideInRight {
+  from { transform: translateX(120%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
 
 /* Cards e containers */

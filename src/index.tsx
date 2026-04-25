@@ -92,9 +92,45 @@ app.get('/', (c) => {
             <button data-tab="strategy" class="tab-btn px-5 py-4 text-sm font-semibold border-b-2 border-transparent text-slate-600 hover:text-emerald-700 whitespace-nowrap">
               <i class="fa-solid fa-lightbulb mr-2"></i>Estratégia Q1
             </button>
+            <button data-tab="howto" class="tab-btn px-5 py-4 text-sm font-semibold border-b-2 border-transparent text-slate-600 hover:text-emerald-700 whitespace-nowrap">
+              <i class="fa-solid fa-circle-question mr-2"></i>Como Usar
+            </button>
           </div>
         </div>
       </nav>
+
+      {/* BARRA DE PROGRESSO GLOBAL */}
+      <div class="bg-white border-b border-slate-200 sticky top-[57px] z-20">
+        <div class="max-w-[1600px] mx-auto px-4 md:px-6 py-3">
+          <div class="flex items-center gap-4 flex-wrap">
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <i class="fa-solid fa-chart-line text-emerald-600"></i>
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-700">Progresso Geral</span>
+            </div>
+            <div class="flex-1 min-w-[200px]">
+              <div class="relative h-6 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                <div id="progress-bar-fill" class="absolute inset-y-0 left-0 bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-500 ease-out rounded-full"
+                     style="width: 0%"></div>
+                <div id="progress-bar-label" class="absolute inset-0 flex items-center justify-center text-xs font-bold text-slate-700">
+                  0 / 0 tarefas (0%)
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <button id="btn-export" class="text-xs px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg border border-blue-200 font-semibold transition" title="Exportar progresso para arquivo JSON">
+                <i class="fa-solid fa-download mr-1"></i>Exportar
+              </button>
+              <label for="file-import" class="cursor-pointer text-xs px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg border border-purple-200 font-semibold transition" title="Importar progresso de arquivo JSON">
+                <i class="fa-solid fa-upload mr-1"></i>Importar
+              </label>
+              <input type="file" id="file-import" accept=".json" class="hidden" />
+              <button id="btn-reset" class="text-xs px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg border border-red-200 font-semibold transition" title="Resetar todo o progresso">
+                <i class="fa-solid fa-trash-can mr-1"></i>Resetar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <main class="max-w-[1600px] mx-auto px-4 md:px-6 py-6 md:py-8">
         {/* LEGENDA DAS FASES */}
@@ -162,6 +198,10 @@ app.get('/', (c) => {
 
         <section id="tab-strategy" class="tab-content hidden">
           <div id="strategy-container"></div>
+        </section>
+
+        <section id="tab-howto" class="tab-content hidden">
+          <div id="howto-container"></div>
         </section>
 
         {/* RODAPÉ */}

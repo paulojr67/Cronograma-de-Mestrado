@@ -7,20 +7,25 @@
 
 ## Funcionalidades Implementadas
 
-### 6 Visualizações Interativas
+### 7 Visualizações Interativas
 1. **Gráfico de Gantt** — visão geral de 16 semanas com barras coloridas por fase, destaque do caminho crítico (animação pulsante), filtro por fase clicando nas chips, e modal detalhado ao clicar em qualquer tarefa
-2. **Por Fase** — agrupamento das 33 tarefas pelas 8 fases do projeto (Extração, Caracterização Química, Nanoformulação, Caracterização NP, In Vitro, Zebrafish, Escrita, Marcos)
+2. **Por Fase** — agrupamento das 33 tarefas pelas 8 fases do projeto, com mini barra de progresso por fase
 3. **Caminho Crítico** — sequência das 25 tarefas que NÃO podem atrasar, em formato de linha do tempo conectada
 4. **Semana a Semana** — 16 cards (um por semana) mostrando todas as tarefas ativas em cada semana, com destaque especial para a semana da qualificação (S16)
 5. **Plano de Escrita** — 5 dicas práticas + cronograma dos capítulos da dissertação em paralelo aos experimentos
 6. **Estratégia Q1** — princípios do cronograma, riscos & mitigações, revistas-alvo, checklist mínimo Q1, plano pós-qualificação e hierarquia de prioridades
+7. **Como Usar** — guia completo de uso, fluxo recomendado, FAQ e atalhos
 
 ### Recursos UX
-- 📊 **Modal de detalhes** com descrição, entregável, dependências e referências de cada tarefa
+- ✅ **Sistema de checkboxes** em todas as visualizações com persistência em localStorage
+- 📊 **Barra de progresso global** sticky no topo (geral + crítico)
+- 📝 **Anotações por tarefa** salvas localmente (textarea no modal)
+- 💾 **Export / Import / Reset** do progresso em formato JSON
 - 🔥 **Toggle de Caminho Crítico** que destaca apenas as tarefas críticas
 - 🎨 **Filtro por Fase** clicando nas chips coloridas da legenda
 - 🚦 **Marcos GO/NO-GO** identificados visualmente (M1, M2, M3)
 - 📱 **Design responsivo** com Tailwind CSS
+- 🖨️ **Pronto para impressão** (Ctrl+P gera PDF estilizado)
 - ⚡ **Renderização SSR** via Hono + Cloudflare Workers
 
 ## Estrutura do Cronograma
@@ -84,21 +89,32 @@
 - **8 fases** com cores e ícones próprios
 
 ### Storage
-- ✅ Dados estruturados em TypeScript estático (`src/data/schedule.ts`)
-- ❌ Sem banco de dados (cronograma é fixo, não há persistência necessária)
+- ✅ Dados do cronograma em TypeScript estático (`src/data/schedule.ts`)
+- ✅ Progresso do usuário em **localStorage** (chave: `cronograma-mestrado-progresso-v1`)
+- ✅ Export/Import de progresso em **JSON**
+
+### Modelo de Progresso (localStorage)
+```typescript
+{
+  [taskId: string]: {
+    done: boolean
+    completedAt: string | null  // ISO timestamp
+    note: string                // anotação livre do usuário
+  }
+}
+```
 
 ## Funcionalidades Não Implementadas (Possíveis Próximos Passos)
 
 - [ ] **Edição inline** de datas e tarefas (modo edição)
 - [ ] **Persistência em D1** para múltiplos usuários e cronogramas customizados
-- [ ] **Export para PDF/PNG** do gráfico de Gantt
-- [ ] **Tracking de progresso real** (% concluído por tarefa, com checkboxes)
+- [ ] **Sincronização cloud** (atualmente apenas localStorage, sem auth)
 - [ ] **Notificações/alertas** para marcos próximos
 - [ ] **Integração com Google Calendar / Outlook**
 - [ ] **Modo escuro**
-- [ ] **Autenticação** para salvar versões pessoais
-- [ ] **Importar/exportar JSON** do cronograma
+- [ ] **Autenticação** para salvar versões pessoais entre dispositivos
 - [ ] **Comparação de cenários** (otimista vs pessimista)
+- [ ] **Gráfico de burndown** (progresso real vs ideal ao longo do tempo)
 
 ## Stack Técnica
 
