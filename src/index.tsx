@@ -142,6 +142,9 @@ app.get('/', (c) => {
               <button id="btn-reset" class="text-xs px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg border border-red-200 font-semibold transition" title="Resetar todo o progresso">
                 <i class="fa-solid fa-trash-can mr-1"></i>Resetar
               </button>
+              <a href="/static/cronograma-netlify.zip" download class="text-xs px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg border border-emerald-200 font-semibold transition" title="Baixar pacote estático pronto para Netlify (drag & drop)">
+                <i class="fa-solid fa-cloud-arrow-down mr-1"></i>Baixar p/ Netlify
+              </a>
             </div>
           </div>
         </div>

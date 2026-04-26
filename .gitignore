@@ -2,8 +2,9 @@
 dist/
 dist-static/
 
-# build outputs distributable
-cronograma-netlify.zip
+# Note: public/static/cronograma-netlify.zip IS tracked (it's the deliverable)
+# Only ignore zip at the repo root
+/cronograma-netlify.zip
 
 # dev
 .yarn/
