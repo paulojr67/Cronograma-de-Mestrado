@@ -1,5 +1,9 @@
 # prod
 dist/
+dist-static/
+
+# build outputs distributable
+cronograma-netlify.zip
 
 # dev
 .yarn/
