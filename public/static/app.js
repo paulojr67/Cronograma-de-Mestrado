@@ -34,8 +34,11 @@ const SB = {
   },
 
   save(url, anonKey) {
+    // Normalização: aceita URL com ou sem /rest/v1, com ou sem barra final
+    let cleanUrl = (url || '').trim().replace(/\/+$/, '');
+    cleanUrl = cleanUrl.replace(/\/rest\/v1$/, ''); // remove /rest/v1 se presente
     this.cfg = {
-      url: (url || '').replace(/\/+$/, ''),
+      url: cleanUrl,
       anonKey: (anonKey || '').trim()
     };
     this.enabled = !!(this.cfg.url && this.cfg.anonKey);
@@ -63,6 +66,13 @@ const SB = {
     const res = await fetch(url, { headers: { apikey: this.cfg.anonKey, Authorization: 'Bearer ' + this.cfg.anonKey } });
     if (!res.ok) {
       const txt = await res.text();
+      // Erros específicos com mensagens amigáveis
+      if (res.status === 401) {
+        throw new Error('Chave inválida (401). Verifique se copiou a anon/publishable key correta em Settings → API.');
+      }
+      if (res.status === 404 && txt.includes('task_progress')) {
+        throw new Error('Tabela "task_progress" não existe. Você precisa rodar o SQL primeiro: SQL Editor → cole supabase-schema.sql → RUN.');
+      }
       throw new Error(`HTTP ${res.status}: ${txt.slice(0, 200)}`);
     }
     return true;
