@@ -11,16 +11,243 @@ let activePhaseFilter = null;
 // Sistema de progresso
 const STORAGE_KEY = 'cronograma-mestrado-progresso-v1';
 const PARTNER_STORAGE_KEY = 'cronograma-mestrado-parceiros-v1';
+const SUPABASE_CONFIG_KEY = 'cronograma-mestrado-supabase-cfg-v1';
 let progress = {}; // { taskId: { done: bool, completedAt: ISO string, note: string } }
 let partnerStatus = {}; // { partnerId: { status, contactDate, lastContact, notes } }
+
+// ============ SUPABASE INTEGRATION ============
+// Cliente leve via REST API (sem dependência externa)
+const SB = {
+  cfg: null,        // { url, anonKey }
+  enabled: false,
+  syncing: false,
+  lastSync: null,
+
+  load() {
+    try {
+      const raw = localStorage.getItem(SUPABASE_CONFIG_KEY);
+      if (raw) {
+        this.cfg = JSON.parse(raw);
+        this.enabled = !!(this.cfg.url && this.cfg.anonKey);
+      }
+    } catch (e) { console.warn('Erro cfg Supabase:', e); }
+  },
+
+  save(url, anonKey) {
+    this.cfg = {
+      url: (url || '').replace(/\/+$/, ''),
+      anonKey: (anonKey || '').trim()
+    };
+    this.enabled = !!(this.cfg.url && this.cfg.anonKey);
+    localStorage.setItem(SUPABASE_CONFIG_KEY, JSON.stringify(this.cfg));
+  },
+
+  clear() {
+    this.cfg = null;
+    this.enabled = false;
+    localStorage.removeItem(SUPABASE_CONFIG_KEY);
+  },
+
+  headers() {
+    return {
+      'apikey': this.cfg.anonKey,
+      'Authorization': 'Bearer ' + this.cfg.anonKey,
+      'Content-Type': 'application/json',
+      'Prefer': 'resolution=merge-duplicates,return=minimal'
+    };
+  },
+
+  async test() {
+    if (!this.enabled) throw new Error('Não configurado');
+    const url = `${this.cfg.url}/rest/v1/task_progress?select=task_id&limit=1`;
+    const res = await fetch(url, { headers: { apikey: this.cfg.anonKey, Authorization: 'Bearer ' + this.cfg.anonKey } });
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(`HTTP ${res.status}: ${txt.slice(0, 200)}`);
+    }
+    return true;
+  },
+
+  // Pull TUDO do Supabase
+  async pull() {
+    if (!this.enabled) return null;
+    const [tp, ps] = await Promise.all([
+      fetch(`${this.cfg.url}/rest/v1/task_progress?select=*`, { headers: { apikey: this.cfg.anonKey, Authorization: 'Bearer ' + this.cfg.anonKey } }),
+      fetch(`${this.cfg.url}/rest/v1/partner_status?select=*`, { headers: { apikey: this.cfg.anonKey, Authorization: 'Bearer ' + this.cfg.anonKey } })
+    ]);
+    if (!tp.ok) throw new Error('Pull task_progress falhou: ' + tp.status);
+    if (!ps.ok) throw new Error('Pull partner_status falhou: ' + ps.status);
+    const tasks = await tp.json();
+    const partners = await ps.json();
+    const newProgress = {};
+    tasks.forEach(t => {
+      newProgress[t.task_id] = {
+        done: !!t.done,
+        completedAt: t.completed_at,
+        note: t.note || ''
+      };
+    });
+    const newPartnerStatus = {};
+    partners.forEach(p => {
+      newPartnerStatus[p.partner_id] = {
+        status: p.status || 'pending',
+        contactDate: p.contact_date,
+        lastContact: p.last_contact,
+        notes: p.notes || ''
+      };
+    });
+    return { progress: newProgress, partnerStatus: newPartnerStatus };
+  },
+
+  // Push UMA tarefa
+  async pushTask(taskId, data) {
+    if (!this.enabled) return;
+    const body = [{
+      task_id: taskId,
+      done: !!data.done,
+      completed_at: data.completedAt || null,
+      note: data.note || null
+    }];
+    const res = await fetch(`${this.cfg.url}/rest/v1/task_progress?on_conflict=task_id`, {
+      method: 'POST',
+      headers: this.headers(),
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error('Push tarefa falhou: ' + res.status + ' ' + await res.text());
+  },
+
+  // Push UM parceiro
+  async pushPartner(partnerId, data) {
+    if (!this.enabled) return;
+    const body = [{
+      partner_id: partnerId,
+      status: data.status || 'pending',
+      contact_date: data.contactDate || null,
+      last_contact: data.lastContact || null,
+      notes: data.notes || null
+    }];
+    const res = await fetch(`${this.cfg.url}/rest/v1/partner_status?on_conflict=partner_id`, {
+      method: 'POST',
+      headers: this.headers(),
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error('Push parceiro falhou: ' + res.status + ' ' + await res.text());
+  },
+
+  // Push TUDO (bulk upsert)
+  async pushAll() {
+    if (!this.enabled) return;
+    const taskBody = Object.entries(progress).map(([taskId, d]) => ({
+      task_id: taskId,
+      done: !!d.done,
+      completed_at: d.completedAt || null,
+      note: d.note || null
+    }));
+    const partnerBody = Object.entries(partnerStatus).map(([pid, d]) => ({
+      partner_id: pid,
+      status: d.status || 'pending',
+      contact_date: d.contactDate || null,
+      last_contact: d.lastContact || null,
+      notes: d.notes || null
+    }));
+    if (taskBody.length) {
+      const r = await fetch(`${this.cfg.url}/rest/v1/task_progress?on_conflict=task_id`, {
+        method: 'POST', headers: this.headers(), body: JSON.stringify(taskBody)
+      });
+      if (!r.ok) throw new Error('Bulk tasks: ' + r.status + ' ' + await r.text());
+    }
+    if (partnerBody.length) {
+      const r = await fetch(`${this.cfg.url}/rest/v1/partner_status?on_conflict=partner_id`, {
+        method: 'POST', headers: this.headers(), body: JSON.stringify(partnerBody)
+      });
+      if (!r.ok) throw new Error('Bulk partners: ' + r.status + ' ' + await r.text());
+    }
+  }
+};
+
+// Push assíncrono em background (debounced) — não trava a UI
+let _pushQueue = { tasks: new Map(), partners: new Map(), timer: null };
+function queueSyncTask(taskId) {
+  if (!SB.enabled) return;
+  _pushQueue.tasks.set(taskId, progress[taskId] || { done: false });
+  scheduleFlush();
+}
+function queueSyncPartner(partnerId) {
+  if (!SB.enabled) return;
+  _pushQueue.partners.set(partnerId, partnerStatus[partnerId] || { status: 'pending' });
+  scheduleFlush();
+}
+function scheduleFlush() {
+  if (_pushQueue.timer) clearTimeout(_pushQueue.timer);
+  _pushQueue.timer = setTimeout(flushQueue, 600);
+}
+async function flushQueue() {
+  if (!SB.enabled) return;
+  const tasks = Array.from(_pushQueue.tasks.entries());
+  const partners = Array.from(_pushQueue.partners.entries());
+  _pushQueue.tasks.clear();
+  _pushQueue.partners.clear();
+  setSyncIndicator('syncing');
+  try {
+    await Promise.all([
+      ...tasks.map(([id, d]) => SB.pushTask(id, d)),
+      ...partners.map(([id, d]) => SB.pushPartner(id, d))
+    ]);
+    SB.lastSync = new Date();
+    setSyncIndicator('ok');
+  } catch (e) {
+    console.error('Falha sync:', e);
+    setSyncIndicator('error', e.message);
+  }
+}
+
+function setSyncIndicator(state, msg) {
+  const el = document.getElementById('sb-status');
+  if (!el) return;
+  const s = {
+    off:     { icon: 'fa-cloud-arrow-up', color: 'text-slate-400',   txt: 'Local apenas' },
+    syncing: { icon: 'fa-cloud-arrow-up fa-bounce', color: 'text-blue-500',   txt: 'Sincronizando…' },
+    ok:      { icon: 'fa-cloud-check',    color: 'text-emerald-500', txt: 'Sincronizado' },
+    error:   { icon: 'fa-cloud-bolt',     color: 'text-red-500',     txt: 'Erro: ' + (msg || '') }
+  }[state] || { icon: 'fa-cloud', color: 'text-slate-400', txt: '' };
+  el.innerHTML = `<i class="fa-solid ${s.icon} ${s.color}"></i><span class="hidden md:inline ${s.color}">${s.txt}</span>`;
+  el.title = s.txt;
+}
 
 // ============ INIT ============
 document.addEventListener('DOMContentLoaded', async () => {
   try {
     loadProgress();
     loadPartnerStatus();
-    const res = await fetch('/api/schedule');
-    SCHEDULE = await res.json();
+    SB.load();
+    setSyncIndicator(SB.enabled ? 'ok' : 'off');
+
+    // 1) Carrega dados do cronograma — embutidos (window.__SCHEDULE__) OU via API
+    if (window.__SCHEDULE__) {
+      SCHEDULE = window.__SCHEDULE__;
+    } else {
+      const res = await fetch('/api/schedule');
+      SCHEDULE = await res.json();
+    }
+
+    // 2) Se Supabase configurado, faz pull e mescla com local (estratégia: remoto vence)
+    if (SB.enabled) {
+      try {
+        const remote = await SB.pull();
+        if (remote) {
+          // Merge: remoto sobrepõe local
+          progress = { ...progress, ...remote.progress };
+          partnerStatus = { ...partnerStatus, ...remote.partnerStatus };
+          saveProgress();
+          savePartnerStatus();
+          SB.lastSync = new Date();
+          setSyncIndicator('ok');
+        }
+      } catch (e) {
+        console.warn('Pull Supabase falhou:', e);
+        setSyncIndicator('error', e.message);
+      }
+    }
 
     renderPhaseChips();
     renderGantt();
@@ -36,6 +263,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupCriticalToggle();
     setupModal();
     setupProgressControls();
+    setupSupabaseControls();
     updateProgressBar();
   } catch (e) {
     console.error('Erro ao carregar cronograma:', e);
@@ -43,6 +271,199 @@ document.addEventListener('DOMContentLoaded', async () => {
       '<div class="bg-red-100 text-red-800 p-4 text-center">Erro ao carregar dados do cronograma.</div>');
   }
 });
+
+// ============ MODAL DE CONFIG SUPABASE ============
+function setupSupabaseControls() {
+  const btn = document.getElementById('btn-supabase');
+  if (btn) btn.addEventListener('click', openSupabaseModal);
+  const status = document.getElementById('sb-status');
+  if (status) status.addEventListener('click', openSupabaseModal);
+}
+
+function openSupabaseModal() {
+  const cfg = SB.cfg || { url: '', anonKey: '' };
+  const modal = document.getElementById('task-modal');
+  const content = document.getElementById('modal-content');
+  modal.dataset.currentTaskId = '';
+  content.innerHTML = `
+    <div class="p-6">
+      <div class="flex items-start justify-between mb-4">
+        <div>
+          <h2 class="text-2xl font-bold text-slate-800"><i class="fa-solid fa-database text-emerald-600 mr-2"></i>Integração Supabase</h2>
+          <p class="text-sm text-slate-500 mt-1">Sincronize seu progresso entre dispositivos (gratuito)</p>
+        </div>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-700 text-2xl"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-lg mb-4 text-sm">
+        <p class="font-semibold text-blue-900 mb-2"><i class="fa-solid fa-circle-info mr-1"></i>Como configurar (5 min, gratuito):</p>
+        <ol class="list-decimal pl-5 space-y-1 text-blue-800">
+          <li>Crie conta gratuita em <a href="https://supabase.com" target="_blank" class="underline font-semibold">supabase.com</a> e um novo projeto</li>
+          <li>No Dashboard → <strong>SQL Editor</strong> → cole o conteúdo de <a href="static/supabase-schema.sql" target="_blank" class="underline font-semibold">supabase-schema.sql</a> e clique em <strong>RUN</strong></li>
+          <li>Vá em <strong>Settings → API</strong> e copie:</li>
+        </ol>
+      </div>
+
+      <div class="space-y-3">
+        <div>
+          <label class="text-xs font-bold uppercase text-slate-600">Project URL</label>
+          <input type="text" id="sb-url" value="${cfg.url || ''}" placeholder="https://xxxxxxxxxxxxxxxx.supabase.co"
+                 class="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none text-sm font-mono" />
+        </div>
+        <div>
+          <label class="text-xs font-bold uppercase text-slate-600">anon public key</label>
+          <textarea id="sb-key" placeholder="eyJhbGciOi…" rows="3"
+                    class="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none text-xs font-mono break-all">${cfg.anonKey || ''}</textarea>
+          <p class="text-[11px] text-slate-500 mt-1"><i class="fa-solid fa-shield-halved mr-1"></i>É a chave <strong>pública anon</strong> — segura para uso no frontend</p>
+        </div>
+      </div>
+
+      <div id="sb-test-result" class="mt-3 hidden"></div>
+
+      <div class="mt-5 grid grid-cols-2 gap-2">
+        <button onclick="testSupabase()" class="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-sm font-semibold">
+          <i class="fa-solid fa-vial mr-1"></i>Testar conexão
+        </button>
+        <button onclick="saveSupabase()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold">
+          <i class="fa-solid fa-floppy-disk mr-1"></i>Salvar e Sincronizar
+        </button>
+      </div>
+
+      ${SB.enabled ? `
+      <div class="mt-5 pt-4 border-t border-slate-200">
+        <p class="text-xs text-slate-600 mb-2"><i class="fa-solid fa-circle-check text-emerald-500 mr-1"></i>Conectado. Última sync: ${SB.lastSync ? SB.lastSync.toLocaleTimeString('pt-BR') : '—'}</p>
+        <div class="grid grid-cols-3 gap-2">
+          <button onclick="pullSupabase()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold">
+            <i class="fa-solid fa-cloud-arrow-down mr-1"></i>Puxar nuvem
+          </button>
+          <button onclick="pushAllSupabase()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold">
+            <i class="fa-solid fa-cloud-arrow-up mr-1"></i>Enviar local
+          </button>
+          <button onclick="disconnectSupabase()" class="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg text-xs font-semibold">
+            <i class="fa-solid fa-link-slash mr-1"></i>Desconectar
+          </button>
+        </div>
+      </div>` : ''}
+
+      <div class="mt-5 pt-4 border-t border-slate-200 text-[11px] text-slate-500">
+        <p class="mb-1"><i class="fa-solid fa-lightbulb text-amber-500 mr-1"></i><strong>Sem Supabase?</strong> Tudo funciona em modo local (localStorage do navegador). Use "Exportar/Importar" para backup manual.</p>
+        <p><i class="fa-solid fa-mobile-screen text-blue-500 mr-1"></i><strong>Multi-dispositivo:</strong> com Supabase, abra no celular e desktop com a mesma config — progresso sincroniza automaticamente.</p>
+      </div>
+    </div>
+  `;
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+}
+
+async function testSupabase() {
+  const url = document.getElementById('sb-url').value;
+  const key = document.getElementById('sb-key').value;
+  const result = document.getElementById('sb-test-result');
+  if (!url || !key) {
+    result.className = 'mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800';
+    result.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-1"></i>Preencha URL e anon key';
+    result.classList.remove('hidden');
+    return;
+  }
+  result.className = 'mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800';
+  result.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Testando…';
+  result.classList.remove('hidden');
+  // Tenta com config temporária
+  const old = SB.cfg;
+  SB.save(url, key);
+  try {
+    await SB.test();
+    result.className = 'mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-800';
+    result.innerHTML = '<i class="fa-solid fa-circle-check mr-1"></i><strong>Conexão OK!</strong> Tabelas encontradas. Pode salvar.';
+  } catch (e) {
+    result.className = 'mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800';
+    result.innerHTML = `<i class="fa-solid fa-circle-xmark mr-1"></i><strong>Falhou:</strong> ${e.message}<br><span class="text-xs">Verifique se rodou o script SQL e se URL/key estão corretos.</span>`;
+    SB.cfg = old; // restaura
+    SB.enabled = !!(old && old.url && old.anonKey);
+  }
+}
+
+async function saveSupabase() {
+  const url = document.getElementById('sb-url').value;
+  const key = document.getElementById('sb-key').value;
+  if (!url || !key) {
+    showToast('Preencha URL e anon key', 'error');
+    return;
+  }
+  SB.save(url, key);
+  setSyncIndicator('syncing');
+  try {
+    await SB.test();
+    // Push local atual + Pull remoto e merge
+    if (Object.keys(progress).length || Object.keys(partnerStatus).length) {
+      await SB.pushAll();
+    }
+    const remote = await SB.pull();
+    if (remote) {
+      progress = { ...progress, ...remote.progress };
+      partnerStatus = { ...partnerStatus, ...remote.partnerStatus };
+      saveProgress();
+      savePartnerStatus();
+    }
+    SB.lastSync = new Date();
+    setSyncIndicator('ok');
+    refreshAllViews();
+    closeModal();
+    showToast('✓ Supabase conectado e sincronizado!');
+  } catch (e) {
+    setSyncIndicator('error', e.message);
+    showToast('Erro: ' + e.message, 'error');
+  }
+}
+
+async function pullSupabase() {
+  setSyncIndicator('syncing');
+  try {
+    const remote = await SB.pull();
+    if (remote) {
+      progress = remote.progress;
+      partnerStatus = remote.partnerStatus;
+      saveProgress();
+      savePartnerStatus();
+    }
+    SB.lastSync = new Date();
+    setSyncIndicator('ok');
+    refreshAllViews();
+    closeModal();
+    showToast('✓ Dados puxados da nuvem');
+  } catch (e) {
+    setSyncIndicator('error', e.message);
+    showToast('Erro: ' + e.message, 'error');
+  }
+}
+
+async function pushAllSupabase() {
+  setSyncIndicator('syncing');
+  try {
+    await SB.pushAll();
+    SB.lastSync = new Date();
+    setSyncIndicator('ok');
+    closeModal();
+    showToast('✓ Dados enviados para nuvem');
+  } catch (e) {
+    setSyncIndicator('error', e.message);
+    showToast('Erro: ' + e.message, 'error');
+  }
+}
+
+function disconnectSupabase() {
+  if (!confirm('Desconectar do Supabase? Os dados continuam no navegador (localStorage).')) return;
+  SB.clear();
+  setSyncIndicator('off');
+  closeModal();
+  showToast('Desconectado. Modo local ativo.', 'warning');
+}
+
+window.testSupabase = testSupabase;
+window.saveSupabase = saveSupabase;
+window.pullSupabase = pullSupabase;
+window.pushAllSupabase = pushAllSupabase;
+window.disconnectSupabase = disconnectSupabase;
 
 // ============ PROGRESSO (localStorage) ============
 function loadProgress() {
@@ -101,6 +522,7 @@ function updatePartnerStatus(partnerId, updates) {
   if (!partnerStatus[partnerId]) partnerStatus[partnerId] = {};
   Object.assign(partnerStatus[partnerId], updates);
   savePartnerStatus();
+  queueSyncPartner(partnerId);
   renderPartners();
 }
 
@@ -117,6 +539,7 @@ function toggleTask(taskId) {
   progress[taskId].done = !progress[taskId].done;
   progress[taskId].completedAt = progress[taskId].done ? new Date().toISOString() : null;
   saveProgress();
+  queueSyncTask(taskId);
   refreshAllViews();
 }
 
@@ -124,6 +547,7 @@ function setNote(taskId, note) {
   if (!progress[taskId]) progress[taskId] = { done: false };
   progress[taskId].note = note;
   saveProgress();
+  queueSyncTask(taskId);
 }
 
 function refreshAllViews() {

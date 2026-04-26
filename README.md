@@ -5,6 +5,22 @@
 - **Objetivo**: Aplicação web interativa que visualiza o cronograma detalhado de um projeto de mestrado em nanobiotecnologia, com qualificação prevista para Agosto/2026
 - **Projeto científico**: Desenvolver nanoformulação polimérica Gelatina/PLA carregada com frações Hexano e Acetato de Etila das folhas de *Syzygium cumini* (Jamelão) para testar potencial neuroprotetor contra Alzheimer (inibição AChE/BChE + modelos em Zebrafish)
 
+## 🚀 Deploy rápido no Netlify (drop-ready)
+
+1. Baixe `cronograma-netlify.zip` (botão verde "Baixar p/ Netlify" no app, ou em `/static/cronograma-netlify.zip`)
+2. Descompacte (apenas 5 arquivos, com **`index.html` na raiz**)
+3. Acesse https://app.netlify.com/drop e arraste a pasta inteira
+4. **Pronto!** Site no ar em ~30 segundos
+
+## ☁️ Sincronização Supabase (multi-dispositivo, opcional)
+
+1. Crie conta gratuita em https://supabase.com → novo projeto
+2. SQL Editor → cole o conteúdo de `supabase-schema.sql` → RUN
+3. No app, clique em **"Supabase"** no topo → cole **Project URL** e **anon public key**
+4. Salvar — progresso sincroniza automaticamente entre todos os dispositivos
+
+Sem Supabase, tudo funciona em modo local (localStorage) com export/import manual.
+
 ## Funcionalidades Implementadas
 
 ### 8 Visualizações Interativas

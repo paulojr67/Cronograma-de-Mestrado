@@ -145,6 +145,13 @@ app.get('/', (c) => {
               <a href="/static/cronograma-netlify.zip" download class="text-xs px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg border border-emerald-200 font-semibold transition" title="Baixar pacote estático pronto para Netlify (drag & drop)">
                 <i class="fa-solid fa-cloud-arrow-down mr-1"></i>Baixar p/ Netlify
               </a>
+              <button id="btn-supabase" class="text-xs px-3 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-700 rounded-lg border border-teal-200 font-semibold transition" title="Configurar sincronização Supabase (multi-dispositivo)">
+                <i class="fa-solid fa-database mr-1"></i>Supabase
+              </button>
+              <button id="sb-status" class="text-xs px-2 py-1.5 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 flex items-center gap-1.5 cursor-pointer" title="Status de sincronização">
+                <i class="fa-solid fa-cloud-arrow-up text-slate-400"></i>
+                <span class="hidden md:inline text-slate-400">Local apenas</span>
+              </button>
             </div>
           </div>
         </div>
