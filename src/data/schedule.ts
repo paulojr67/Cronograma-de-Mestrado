@@ -85,7 +85,7 @@ export const partners: Partner[] = [
     city: 'João Pessoa',
     state: 'PB',
     contact: 'Profa. Dra. Anauara (Caracterização Química)',
-    status: 'negotiating',
+    status: 'confirmed',
     capabilities: [
       'LC-MS/MS (alta resolução)',
       'GC-MS',
@@ -95,7 +95,7 @@ export const partners: Partner[] = [
     ],
     color: '#0891b2',
     icon: 'fa-flask',
-    notes: 'Parceria essencial para caracterização química. Requer envio de amostras liofilizadas (Hex e AcOEt).'
+    notes: '✅ AMOSTRAS JÁ ENVIADAS E RECEBIDAS (1ª rodada — extrato/frações). Parceria confirmada. Após finalizar nanos, será feita 2ª rodada de envio (nanopartículas) para nova caracterização química.'
   },
   {
     id: 'limav',
@@ -105,8 +105,10 @@ export const partners: Partner[] = [
     city: 'Teresina',
     state: 'PI',
     contact: 'Coordenação LIMAV',
-    status: 'pending',
+    status: 'confirmed',
     capabilities: [
+      'DLS (Dynamic Light Scattering) ✅',
+      'Potencial Zeta ✅',
       'FESEM / HRTEM',
       'XRD',
       'FTIR',
@@ -115,7 +117,7 @@ export const partners: Partner[] = [
     ],
     color: '#c2410c',
     icon: 'fa-microscope',
-    notes: 'Central multiusuário com fila. Agendar com pelo menos 4-6 semanas de antecedência.'
+    notes: '✅ CONFIRMADO: DLS + Zeta já em execução. DRX + microscopias podem ser feitas aqui OU no Dept. de Física (UFPI). Central multiusuário com fila — agendar com 4-6 semanas de antecedência.'
   },
   {
     id: 'ifpi',
@@ -126,32 +128,49 @@ export const partners: Partner[] = [
     state: 'PI',
     status: 'pending',
     capabilities: [
-      'DLS (Dynamic Light Scattering)',
-      'Potencial Zeta',
       'UV-Vis',
-      'Caracterização coloidal'
+      'Caracterização coloidal (backup)'
     ],
     color: '#9333ea',
     icon: 'fa-atom',
-    notes: 'Parceria local (PI). Fundamental para feedback rápido na otimização das nanopartículas.'
+    notes: 'Parceria local (PI) — backup de UV-Vis. DLS/Zeta migraram para LIMAV-UFPI.'
   },
   {
-    id: 'ufpi',
-    name: 'UFPI',
-    shortName: 'UFPI',
-    institution: 'Universidade Federal do Piauí',
+    id: 'ufpi-fisica',
+    name: 'Dept. Física — UFPI',
+    shortName: 'Física UFPI',
+    institution: 'Departamento de Física — UFPI',
     city: 'Teresina',
     state: 'PI',
-    status: 'pending',
+    status: 'negotiating',
     capabilities: [
-      'FTIR (alternativa ao LIMAV)',
-      'HPLC',
-      'Espectroscopia',
-      'Backup de caracterização'
+      'DRX (Difração de Raios-X)',
+      'Microscopia eletrônica',
+      'Caracterização estrutural'
     ],
     color: '#7c3aed',
-    icon: 'fa-vials',
-    notes: 'Parceria local complementar/redundante para caracterização. Pode servir de backup ao LIMAV.'
+    icon: 'fa-atom',
+    notes: 'Alternativa local ao LIMAV para DRX e microscopias. Reduz tempo de fila e custo de envio.'
+  },
+  {
+    id: 'alek',
+    name: 'Prof. ALEK — Planejamento Fatorial',
+    shortName: 'Prof. ALEK',
+    institution: 'Colaboração local — Especialista em DoE',
+    city: 'Teresina',
+    state: 'PI',
+    contact: 'Prof. ALEK (Otimização estatística da síntese)',
+    status: 'confirmed',
+    capabilities: [
+      'Planejamento Fatorial (DoE)',
+      'Design 2^k / Box-Behnken / CCD',
+      'Análise de Superfície de Resposta (RSM)',
+      'Otimização multivariada',
+      'Análise estatística (ANOVA, Minitab/R)'
+    ],
+    color: '#be185d',
+    icon: 'fa-chart-line',
+    notes: '✅ Colaboração confirmada. Auxiliará no desenho experimental e otimização estatística da síntese das nanopartículas de PCL antes do encapsulamento.'
   },
   {
     id: 'uece',
@@ -161,19 +180,21 @@ export const partners: Partner[] = [
     city: 'Fortaleza',
     state: 'CE',
     contact: 'Lab. parceiro de Zebrafish (UECE)',
-    status: 'negotiating',
+    status: 'confirmed',
     capabilities: [
       'Manutenção de zebrafish adultos',
       'Toxicidade aguda (CL50)',
-      'Tanque Claro/Escuro (ansiedade)',
-      'Campo Aberto (locomoção)',
-      'Esquiva Inibitória (memória)',
+      'Ensaios comportamentais (ansiedade/locomoção/memória)',
+      'Nocicepção (avaliação de dor) 🆕',
+      'Tanque Claro/Escuro',
+      'Campo Aberto',
+      'Esquiva Inibitória',
       'Bioquímica cerebral ex vivo',
       'Aprovação CEUA local'
     ],
     color: '#1d4ed8',
     icon: 'fa-fish',
-    notes: 'CRÍTICO: você terá pouco controle sobre prazos. Manter comunicação semanal e definir cronograma conjunto. CEUA é tramitada por eles.'
+    notes: '✅ AMOSTRAS (extrato/frações) JÁ ENVIADAS — testes solicitados: COMPORTAMENTAL + TOXICIDADE + NOCICEPÇÃO. Após finalizar nanos será feita 2ª rodada de envio (nanopartículas) para repetir bateria completa. CEUA tramitada por eles.'
   }
 ]
 
@@ -200,14 +221,24 @@ export const phases: Phase[] = [
     description: 'Identificação de compostos-chave (Escutelareína, Friedelina) por LC-MS/MS e GC-MS — UFPB/Anauara'
   },
   {
+    id: 'doe',
+    name: 'Planejamento Fatorial (DoE)',
+    shortName: 'DoE / ALEK',
+    color: '#be185d',
+    bgColor: 'bg-pink-100',
+    borderColor: 'border-pink-600',
+    icon: 'fa-chart-line',
+    description: 'Desenho experimental estatístico (DoE) com Prof. ALEK para otimização multivariada da síntese de nanopartículas de PCL — define variáveis críticas, níveis e número mínimo de experimentos'
+  },
+  {
     id: 'nano',
-    name: 'Nanoformulação',
-    shortName: 'Nano',
+    name: 'Nanoformulação (PCL)',
+    shortName: 'Nano PCL',
     color: '#9333ea',
     bgColor: 'bg-purple-100',
     borderColor: 'border-purple-600',
     icon: 'fa-atom',
-    description: 'Desenvolvimento de nanocompósitos Gelatina/PLA carregados com a fração mais ativa'
+    description: 'Desenvolvimento de nanopartículas de Policaprolactona (PCL) carregadas com a fração mais ativa — metodologia atualizada (2026)'
   },
   {
     id: 'characterization',
@@ -360,14 +391,29 @@ export const tasks: Task[] = [
   // ============ FASE 2: CARACTERIZAÇÃO QUÍMICA — UFPB/ANAUARA ============
   {
     id: 'T2.0',
-    name: '📦 Envio de amostras para UFPB (Anauara)',
+    name: '✅ 1ª RODADA — Envio amostras (frações) p/ UFPB',
     startWeek: 3,
     endWeek: 3,
     phaseId: 'chemistry',
     critical: true,
-    description: 'Envio das frações liofilizadas para João Pessoa-PB. Sedex com rastreio. Comunicar Anauara antes e após envio. Manter alíquotas de segurança no lab local.',
-    deliverable: 'Amostras enviadas + código de rastreio + confirmação de recebimento',
+    description: '✅ JÁ REALIZADO. Envio das frações liofilizadas (Hex + AcOEt) para Profa. Anauara — UFPB / João Pessoa-PB. Amostras já recebidas e em análise pelo lab parceiro. Alíquotas de segurança mantidas no lab local.',
+    deliverable: '✅ Amostras (1ª rodada) entregues e em análise na UFPB',
     dependencies: ['T1.3', 'P0.2'],
+    type: 'parallel',
+    location: 'home',
+    partnerId: 'ufpb-anauara',
+    shippingNeeded: true
+  },
+  {
+    id: 'T2.0b',
+    name: '📦 2ª RODADA — Envio NP-PCL para UFPB (pós-síntese)',
+    startWeek: 9,
+    endWeek: 9,
+    phaseId: 'chemistry',
+    critical: false,
+    description: '2ª RODADA: após finalizar nanos, enviar NP-PCL carregada + NP-PCL vazia (controle) para UFPB. Permite caracterização química do ativo encapsulado (estabilidade, perfil pós-encapsulamento).',
+    deliverable: 'NP-PCL enviadas para 2ª rodada de análise química',
+    dependencies: ['T3.3'],
     type: 'parallel',
     location: 'home',
     partnerId: 'ufpb-anauara',
@@ -434,44 +480,88 @@ export const tasks: Task[] = [
   },
 
   // ============ FASE 3: NANOFORMULAÇÃO (Lab Local) ============
+  // ---- Planejamento Fatorial (DoE) com Prof. ALEK — ANTES da síntese ----
+  {
+    id: 'D1',
+    name: '📐 Reunião + desenho experimental (DoE) com Prof. ALEK',
+    startWeek: 4,
+    endWeek: 4,
+    phaseId: 'doe',
+    critical: true,
+    description: 'Reunião com Prof. ALEK para definir: variáveis independentes (razão polímero:ativo, [tensoativo], velocidade/tempo de sonicação, pH, taxa de evaporação), níveis (–1/0/+1) e modelo (Fatorial 2^k, Box-Behnken ou CCD). Definir respostas: tamanho hidrodinâmico, PdI, PZ, EE%.',
+    deliverable: 'Matriz experimental impressa (planilha de N experimentos com ordem aleatorizada)',
+    type: 'milestone',
+    location: 'home',
+    partnerId: 'alek'
+  },
+  {
+    id: 'D2',
+    name: 'Execução dos experimentos do DoE (PCL — NP em branco)',
+    startWeek: 5,
+    endWeek: 6,
+    phaseId: 'doe',
+    critical: true,
+    description: 'Síntese das N nanopartículas de PCL EM BRANCO seguindo a matriz do DoE. Caracterização rápida (tamanho/PdI/PZ no LIMAV após cada bloco). Registrar TODAS as condições.',
+    deliverable: 'Dataset bruto do DoE (planilha completa com respostas medidas)',
+    references: ['Metodologia PCL atualizada (2026)'],
+    dependencies: ['D1'],
+    type: 'lab',
+    location: 'home',
+    partnerId: 'home'
+  },
+  {
+    id: 'D3',
+    name: '📊 Análise estatística do DoE + RSM (com Prof. ALEK)',
+    startWeek: 6,
+    endWeek: 7,
+    phaseId: 'doe',
+    critical: true,
+    description: 'Análise estatística do planejamento: ANOVA, gráficos de Pareto, superfícies de resposta (RSM), identificação das condições ótimas. Validação experimental do ponto ótimo (triplicata).',
+    deliverable: 'Relatório DoE + condições ótimas de síntese validadas',
+    dependencies: ['D2'],
+    type: 'analysis',
+    location: 'home',
+    partnerId: 'alek'
+  },
+  // ---- Nanoformulação com PCL (Policaprolactona) — usa condições do DoE ----
   {
     id: 'T3.1',
-    name: 'Preparação de matriz Gelatina/PLA (testes preliminares)',
+    name: 'Preparação de nanopartículas de PCL — testes preliminares',
     startWeek: 4,
     endWeek: 6,
     phaseId: 'nano',
     critical: false,
-    description: 'Otimização da blenda Gelatina/PLA seguindo RAJKUMAR et al. (2025). Testar diferentes razões e métodos (emulsão/evaporação ou dessolvatação). NP em branco.',
-    deliverable: 'Protocolo da matriz NP em branco',
-    references: ['RAJKUMAR et al. (2025)'],
+    description: 'Otimização do protocolo de síntese de nanopartículas de PCL (Policaprolactona) pela metodologia atualizada (2026). Métodos: emulsão O/A + evaporação do solvente ou nanoprecipitação. Roda em paralelo com o DoE.',
+    deliverable: 'Protocolo PCL — NP em branco validado',
+    references: ['Metodologia PCL atualizada (2026)'],
     type: 'lab',
     location: 'home',
     partnerId: 'home'
   },
   {
     id: 'T3.2',
-    name: 'Encapsulamento da fração selecionada — Lote 1',
+    name: 'Encapsulamento da fração em NP-PCL — Lote 1 (condições ótimas DoE)',
     startWeek: 7,
     endWeek: 7,
     phaseId: 'nano',
     critical: true,
-    description: 'Síntese do nanocompósito carregado (NP-FAcOEt ou NP-FHex). Variar razões fração:polímero (1:5, 1:10, 1:20).',
-    deliverable: 'Suspensão de nanopartículas - Lote 1 (3 razões) + alíquotas para IFPI',
-    references: ['RAJKUMAR et al. (2025)'],
-    dependencies: ['M1', 'T3.1'],
+    description: 'Síntese de NP-PCL carregada (NP-PCL/FAcOEt ou NP-PCL/FHex) usando os parâmetros ótimos identificados pelo DoE. Validar 2-3 razões fração:PCL próximas do ótimo.',
+    deliverable: 'Suspensão de NP-PCL — Lote 1 + alíquotas para LIMAV (DLS/Zeta)',
+    references: ['Metodologia PCL atualizada (2026)'],
+    dependencies: ['M1', 'T3.1', 'D3'],
     type: 'lab',
     location: 'home',
     partnerId: 'home'
   },
   {
     id: 'T3.3',
-    name: 'Otimização e Lote 2 (após primeiros DLS)',
+    name: 'Otimização e Lote 2 NP-PCL (após DLS/Zeta do LIMAV)',
     startWeek: 8,
     endWeek: 8,
     phaseId: 'nano',
     critical: true,
-    description: 'Refinar com base nos DLS/PZ do IFPI: ajuste de tensoativo, pH, sonicação. Produção do lote final para ensaios biológicos.',
-    deliverable: 'Lote final NP-otimizada (≥200 mg) — alíquotas para LIMAV, IFPI/UFPI, UECE',
+    description: 'Refinar com base no feedback do LIMAV (DLS/PZ): ajuste fino de tensoativo, sonicação, evaporação. Produção do lote final de NP-PCL para ensaios biológicos E para 2ª rodada de envios aos parceiros.',
+    deliverable: 'Lote final NP-PCL otimizada (≥300 mg liofilizada) — alíquotas para LIMAV/Física, UFPB (2ª rodada) e UECE (2ª rodada)',
     dependencies: ['T3.2', 'T4.1'],
     type: 'lab',
     location: 'home',
@@ -481,57 +571,57 @@ export const tasks: Task[] = [
   // ============ FASE 4: CARACTERIZAÇÃO DA NANOPARTÍCULA — IFPI / LIMAV / UFPI ============
   {
     id: 'T4.0a',
-    name: '📦 Envio Lote 1 → IFPI (DLS/PZ)',
+    name: '📦 Entrega Lote 1 → LIMAV-UFPI (DLS/PZ)',
     startWeek: 7,
     endWeek: 7,
     phaseId: 'characterization',
     critical: true,
-    description: 'Envio rápido das suspensões de NP-Lote 1 para IFPI (Teresina). Manter cadeia fria se necessário. Coordenar agenda com IFPI antecipadamente.',
-    deliverable: 'Amostras entregues no IFPI',
+    description: 'Entrega das suspensões NP-PCL Lote 1 no LIMAV-UFPI (Teresina) para DLS + Potencial Zeta. Local — sem necessidade de envio postal. Coordenar agenda com antecedência.',
+    deliverable: 'Amostras entregues no LIMAV',
     dependencies: ['T3.2'],
     type: 'parallel',
     location: 'home',
-    partnerId: 'ifpi',
-    shippingNeeded: true
+    partnerId: 'limav',
+    shippingNeeded: false
   },
   {
     id: 'T4.1',
-    name: '⏳ DLS, Potencial Zeta, UV-Vis no IFPI (Lote 1)',
+    name: '⏳ DLS + Potencial Zeta no LIMAV-UFPI (Lote 1)',
     startWeek: 7,
     endWeek: 8,
     phaseId: 'characterization',
     critical: true,
-    description: 'Triagem rápida de tamanho hidrodinâmico, PdI, Potencial Zeta e UV-Vis dos 3 candidatos. IFPI é local (PI), feedback rápido esperado.',
+    description: 'Triagem rápida de tamanho hidrodinâmico, PdI e Potencial Zeta no LIMAV-UFPI. ✅ Confirmado — análise local em andamento. Feedback rápido para otimização.',
     deliverable: 'Tabela comparativa Lote 1 (tamanho/PdI/PZ) — feedback para otimização',
     dependencies: ['T4.0a'],
     type: 'analysis',
     location: 'partner',
-    partnerId: 'ifpi'
+    partnerId: 'limav'
   },
   {
     id: 'T4.0b',
-    name: '📦 Envio Lote 2 → LIMAV (FESEM, XRD, FTIR)',
+    name: '📦 Entrega Lote 2 → LIMAV / Física-UFPI (DRX + microscopias)',
     startWeek: 9,
     endWeek: 9,
     phaseId: 'characterization',
     critical: true,
-    description: 'Envio do lote final (otimizado) para LIMAV/UFPI. Liofilizar se for análise sólida (XRD, FTIR). Reservar agenda no LIMAV ANTES (idealmente desde S5).',
-    deliverable: 'Amostras entregues no LIMAV',
+    description: 'Entrega do lote final (otimizado) — liofilizado para DRX e FTIR. Local de análise: LIMAV-UFPI OU Dept. de Física-UFPI (quem tiver agenda mais rápida). Reservar agenda com antecedência (idealmente desde S5).',
+    deliverable: 'Amostras entregues no LIMAV / Física',
     dependencies: ['T3.3'],
     type: 'parallel',
     location: 'home',
     partnerId: 'limav',
-    shippingNeeded: true
+    shippingNeeded: false
   },
   {
     id: 'T4.2',
-    name: '⏳ FTIR e XRD no LIMAV (interação fração-polímero)',
+    name: '⏳ FTIR + DRX (LIMAV ou Física-UFPI)',
     startWeek: 9,
     endWeek: 11,
     phaseId: 'characterization',
     critical: false,
-    description: 'Confirmação de encapsulamento (FTIR) e estado físico do ativo (XRD - amorfo vs cristalino). Backup no UFPI se LIMAV demorar. Buffer de 1 semana embutido.',
-    deliverable: 'Espectros FTIR e difratogramas XRD',
+    description: 'Confirmação de encapsulamento (FTIR) e estado físico do ativo (DRX — amorfo vs cristalino). 🔁 Local alternativo: LIMAV-UFPI OU Dept. de Física-UFPI. Usar o que tiver disponibilidade primeiro.',
+    deliverable: 'Espectros FTIR e difratogramas DRX',
     dependencies: ['T4.0b'],
     type: 'analysis',
     location: 'partner',
@@ -540,12 +630,12 @@ export const tasks: Task[] = [
   },
   {
     id: 'T4.3',
-    name: '⏳ FESEM/HRTEM no LIMAV (morfologia)',
+    name: '⏳ FESEM/HRTEM (LIMAV ou Física-UFPI — morfologia)',
     startWeek: 9,
     endWeek: 11,
     phaseId: 'characterization',
     critical: true,
-    description: 'Imagens de microscopia eletrônica. Análise de forma, dispersão e tamanho real. Análise mais demorada — agendar com bastante antecedência.',
+    description: 'Microscopia eletrônica — forma, dispersão e tamanho real das NP-PCL. 🔁 Local alternativo: LIMAV-UFPI OU Dept. de Física-UFPI. Análise mais demorada — agendar com antecedência em AMBOS para garantir.',
     deliverable: 'Imagens FESEM/HRTEM + histogramas de tamanho',
     dependencies: ['T4.0b'],
     type: 'analysis',
@@ -625,15 +715,29 @@ export const tasks: Task[] = [
     partnerId: 'home'
   },
   {
+    id: 'T5.2b',
+    name: '🚨 CONTINGÊNCIA — Recuperação cultura MTT (contaminada)',
+    startWeek: 8,
+    endWeek: 10,
+    phaseId: 'invitro',
+    critical: true,
+    description: '⚠️ MTT CONTAMINOU. Plano de recuperação: (1) descartar cultura comprometida + descontaminar estufa/BSC; (2) requisitar novo aliquot de SH-SY5Y (banco/colaborador); (3) testes de esterilidade do meio/soro/PBS; (4) cultivo paralelo com micoplasma-screen + antibiótico profilático nos primeiros passes; (5) só re-expandir após 3 passes limpos. Avaliar plano B: linhagem alternativa (PC12 ou N2a) se atraso > 3 semanas.',
+    deliverable: 'Banco celular novo + laudo de esterilidade + relatório de causa-raiz',
+    type: 'lab',
+    location: 'home',
+    partnerId: 'home',
+    bufferWeeks: 1
+  },
+  {
     id: 'T5.3',
-    name: 'Citotoxicidade (MTT) em SH-SY5Y',
+    name: 'Citotoxicidade (MTT) em SH-SY5Y — após recuperação',
     startWeek: 10,
     endWeek: 11,
     phaseId: 'invitro',
     critical: true,
-    description: 'Determinação da janela terapêutica não-tóxica das NPs e fração livre. 24h e 48h.',
+    description: 'Determinação da janela terapêutica não-tóxica das NP-PCL e fração livre. 24h e 48h. ⚠️ Depende da recuperação do banco celular (T5.2b).',
     deliverable: 'CC50 e doses seguras definidas',
-    dependencies: ['T5.2', 'M2'],
+    dependencies: ['T5.2', 'T5.2b', 'M2'],
     type: 'lab',
     location: 'home',
     partnerId: 'home'
@@ -683,14 +787,28 @@ export const tasks: Task[] = [
     partnerId: 'uece'
   },
   {
+    id: 'T6.0c-1',
+    name: '✅ 1ª RODADA — Envio amostras (extrato/frações) p/ UECE',
+    startWeek: 3,
+    endWeek: 4,
+    phaseId: 'invivo',
+    critical: true,
+    description: '✅ JÁ REALIZADO. Envio das amostras iniciais (extrato e frações) para UECE — testes solicitados: COMPORTAMENTAL + TOXICIDADE + NOCICEPÇÃO. Material em análise pelo lab parceiro.',
+    deliverable: '✅ Amostras (1ª rodada) entregues e em análise na UECE',
+    type: 'parallel',
+    location: 'home',
+    partnerId: 'uece',
+    shippingNeeded: true
+  },
+  {
     id: 'T6.0c',
-    name: '📦 Envio de NPs e fração para UECE',
+    name: '📦 2ª RODADA — Envio de NP-PCL para UECE',
     startWeek: 9,
     endWeek: 9,
     phaseId: 'invivo',
     critical: true,
-    description: 'Envio para Fortaleza-CE: NP otimizada (≥100 mg liofilizada) + fração livre + NP vazia (controle). Sedex com rastreio. Anexar protocolo de preparo de doses.',
-    deliverable: 'Amostras entregues na UECE + protocolo enviado',
+    description: '2ª RODADA: após finalizar nanos, enviar para Fortaleza-CE: NP-PCL otimizada (≥100 mg liofilizada) + NP-PCL vazia (controle) + fração livre. Sedex com rastreio. Anexar protocolo de preparo de doses. Bateria completa será refeita com as nanopartículas.',
+    deliverable: 'Amostras (2ª rodada — NP-PCL) entregues na UECE + protocolo enviado',
     dependencies: ['T3.3', 'T6.0a', 'T6.0b'],
     type: 'parallel',
     location: 'home',
@@ -704,9 +822,24 @@ export const tasks: Task[] = [
     endWeek: 11,
     phaseId: 'invivo',
     critical: true,
-    description: 'Determinação da CL50 pelo lab da UECE (OECD 203 adaptado). Você acompanha remotamente; lab envia relatório semanal. Buffer embutido para imprevistos.',
-    deliverable: 'CL50 e doses sub-letais definidas',
+    description: 'Determinação da CL50 pelo lab da UECE (OECD 203 adaptado) para NP-PCL. Você acompanha remotamente; lab envia relatório semanal. Buffer embutido para imprevistos. ⚠️ Resultados preliminares da 1ª rodada (amostras já enviadas) devem chegar antes.',
+    deliverable: 'CL50 e doses sub-letais definidas (NP-PCL)',
     references: ['MORAES et al. (2026)'],
+    dependencies: ['T6.0c'],
+    type: 'lab',
+    location: 'partner',
+    partnerId: 'uece',
+    bufferWeeks: 1
+  },
+  {
+    id: 'T6.1b',
+    name: '⏳ Nocicepção (avaliação de dor) — UECE 🆕',
+    startWeek: 11,
+    endWeek: 12,
+    phaseId: 'invivo',
+    critical: true,
+    description: '🆕 NOVO ENSAIO: avaliação de nocicepção em zebrafish (resposta a estímulo nóxio — ex. ácido acético diluído, mostarda alílica ou térmico). Solicitado pelo lab UECE em conjunto com comportamentais e toxicidade. Aplicado tanto na 1ª rodada (frações) quanto na 2ª (NP-PCL).',
+    deliverable: 'Índice de nocicepção + curva dose-resposta',
     dependencies: ['T6.0c'],
     type: 'lab',
     location: 'partner',
@@ -750,7 +883,7 @@ export const tasks: Task[] = [
     endWeek: 13,
     phaseId: 'invivo',
     critical: true,
-    description: 'Treino + teste 24h depois. Memória de curto/longo prazo. Pode incluir modelo de prejuízo (escopolamina) para mostrar reversão.',
+    description: 'Treino + teste 24h depois. Memória de curto/longo prazo. Pode incluir modelo de prejuízo (escopolamina) para mostrar reversão. Realizado com NP-PCL (2ª rodada).',
     deliverable: 'Latência treino vs teste + índice de memória',
     references: ['MORAES et al. (2026)'],
     dependencies: ['T6.2', 'T6.3'],
@@ -790,13 +923,13 @@ export const tasks: Task[] = [
   // ============ FASE 7: ESCRITA DA DISSERTAÇÃO (Paralelo) ============
   {
     id: 'W1',
-    name: '📝 Capítulo: Revisão Bibliográfica',
+    name: '✅ Revisão Sistemática — ENTREGUE',
     startWeek: 1,
     endWeek: 5,
     phaseId: 'writing',
     critical: false,
-    description: 'Iniciar IMEDIATAMENTE: S. cumini, Alzheimer, AChE/BChE, nanoformulações poliméricas, zebrafish como modelo. Atualizar continuamente.',
-    deliverable: 'Capítulo 1 — versão inicial (~30 páginas)',
+    description: '✅ ENTREGUE. Revisão sistemática sobre S. cumini, Alzheimer, AChE/BChE, nanoformulações poliméricas (PCL) e zebrafish como modelo. Documento finalizado e submetido. Servirá como base do Capítulo 1 da dissertação.',
+    deliverable: '✅ Revisão sistemática entregue (Cap. 1 — base)',
     type: 'writing',
     location: 'home',
     partnerId: 'home'
@@ -932,22 +1065,23 @@ export const tasks: Task[] = [
 
 // Caminho Crítico — sequência de tarefas que NÃO podem atrasar
 export const criticalPath: string[] = [
-  'P0.1', 'P0.2',                   // Gestão de parcerias
-  'T1.1', 'T1.2', 'T1.3',           // Extração
-  'T2.0', 'T2.1', 'T2.3',           // Química UFPB
-  'M1',                              // Decisão fração
-  'T3.2', 'T3.3',                    // Nanoformulação
-  'T4.0a', 'T4.1',                   // DLS/PZ IFPI
-  'T4.0b', 'T4.3',                   // FESEM LIMAV
-  'T4.4',                            // EE% local
-  'M2',                              // Validação NP
-  'T5.1', 'T5.3', 'T5.4',           // In vitro
-  'T6.0a', 'T6.0b', 'T6.0c',        // Setup UECE
-  'T6.1', 'T6.2', 'T6.3', 'T6.4',   // Comportamento UECE
-  'T6.6',                            // Consolidação dados
-  'W5',                              // Escrita resultados
-  'T8.1', 'T8.2', 'T8.3', 'T8.4',   // Finalização
-  'M3'                               // Qualificação
+  'P0.1', 'P0.2',                          // Gestão de parcerias
+  'T1.1', 'T1.2', 'T1.3',                  // Extração
+  'T2.0', 'T2.1', 'T2.3',                  // Química UFPB (1ª rodada já enviada)
+  'M1',                                     // Decisão fração
+  'D1', 'D2', 'D3',                         // Planejamento Fatorial (DoE) — ALEK
+  'T3.2', 'T3.3',                           // Nanoformulação PCL
+  'T4.0a', 'T4.1',                          // DLS/PZ LIMAV-UFPI
+  'T4.0b', 'T4.3',                          // FESEM LIMAV ou Física
+  'T4.4',                                   // EE% local
+  'M2',                                     // Validação NP
+  'T5.1', 'T5.2b', 'T5.3', 'T5.4',         // In vitro (com contingência MTT)
+  'T6.0a', 'T6.0b', 'T6.0c-1', 'T6.0c',    // Setup UECE + 2 rodadas de envio
+  'T6.1', 'T6.1b', 'T6.2', 'T6.3', 'T6.4', // Comportamento + Nocicepção UECE
+  'T6.6',                                   // Consolidação dados
+  'W5',                                     // Escrita resultados
+  'T8.1', 'T8.2', 'T8.3', 'T8.4',          // Finalização
+  'M3'                                      // Qualificação
 ]
 
 // Estatísticas resumidas

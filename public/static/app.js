@@ -60,10 +60,24 @@ const SB = {
     };
   },
 
+  // Wrapper de fetch que traduz "Failed to fetch" (DNS/CORS/projeto pausado) em mensagem amigável
+  async _safeFetch(url, opts) {
+    try {
+      return await fetch(url, opts);
+    } catch (e) {
+      // TypeError "Failed to fetch" = DNS não resolveu, CORS bloqueou ou projeto pausado
+      const msg = String(e && e.message || e);
+      if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('Load failed')) {
+        throw new Error('⏸️ Projeto Supabase inacessível. O projeto free-tier PAUSA após 7 dias sem uso. Acesse https://supabase.com/dashboard, clique no projeto e em "Restore project". Depois recarregue a página.');
+      }
+      throw e;
+    }
+  },
+
   async test() {
     if (!this.enabled) throw new Error('Não configurado');
     const url = `${this.cfg.url}/rest/v1/task_progress?select=task_id&limit=1`;
-    const res = await fetch(url, { headers: { apikey: this.cfg.anonKey, Authorization: 'Bearer ' + this.cfg.anonKey } });
+    const res = await this._safeFetch(url, { headers: { apikey: this.cfg.anonKey, Authorization: 'Bearer ' + this.cfg.anonKey } });
     if (!res.ok) {
       const txt = await res.text();
       // Erros específicos com mensagens amigáveis
@@ -72,6 +86,9 @@ const SB = {
       }
       if (res.status === 404 && txt.includes('task_progress')) {
         throw new Error('Tabela "task_progress" não existe. Você precisa rodar o SQL primeiro: SQL Editor → cole supabase-schema.sql → RUN.');
+      }
+      if (res.status === 503 || res.status === 502 || res.status === 504) {
+        throw new Error(`Projeto Supabase indisponível (HTTP ${res.status}). Pode estar pausado ou reiniciando. Acesse o dashboard e clique em "Restore project".`);
       }
       throw new Error(`HTTP ${res.status}: ${txt.slice(0, 200)}`);
     }
@@ -82,8 +99,8 @@ const SB = {
   async pull() {
     if (!this.enabled) return null;
     const [tp, ps] = await Promise.all([
-      fetch(`${this.cfg.url}/rest/v1/task_progress?select=*`, { headers: { apikey: this.cfg.anonKey, Authorization: 'Bearer ' + this.cfg.anonKey } }),
-      fetch(`${this.cfg.url}/rest/v1/partner_status?select=*`, { headers: { apikey: this.cfg.anonKey, Authorization: 'Bearer ' + this.cfg.anonKey } })
+      this._safeFetch(`${this.cfg.url}/rest/v1/task_progress?select=*`, { headers: { apikey: this.cfg.anonKey, Authorization: 'Bearer ' + this.cfg.anonKey } }),
+      this._safeFetch(`${this.cfg.url}/rest/v1/partner_status?select=*`, { headers: { apikey: this.cfg.anonKey, Authorization: 'Bearer ' + this.cfg.anonKey } })
     ]);
     if (!tp.ok) throw new Error('Pull task_progress falhou: ' + tp.status);
     if (!ps.ok) throw new Error('Pull partner_status falhou: ' + ps.status);
@@ -118,7 +135,7 @@ const SB = {
       completed_at: data.completedAt || null,
       note: data.note || null
     }];
-    const res = await fetch(`${this.cfg.url}/rest/v1/task_progress?on_conflict=task_id`, {
+    const res = await this._safeFetch(`${this.cfg.url}/rest/v1/task_progress?on_conflict=task_id`, {
       method: 'POST',
       headers: this.headers(),
       body: JSON.stringify(body)
@@ -136,7 +153,7 @@ const SB = {
       last_contact: data.lastContact || null,
       notes: data.notes || null
     }];
-    const res = await fetch(`${this.cfg.url}/rest/v1/partner_status?on_conflict=partner_id`, {
+    const res = await this._safeFetch(`${this.cfg.url}/rest/v1/partner_status?on_conflict=partner_id`, {
       method: 'POST',
       headers: this.headers(),
       body: JSON.stringify(body)
@@ -161,13 +178,13 @@ const SB = {
       notes: d.notes || null
     }));
     if (taskBody.length) {
-      const r = await fetch(`${this.cfg.url}/rest/v1/task_progress?on_conflict=task_id`, {
+      const r = await this._safeFetch(`${this.cfg.url}/rest/v1/task_progress?on_conflict=task_id`, {
         method: 'POST', headers: this.headers(), body: JSON.stringify(taskBody)
       });
       if (!r.ok) throw new Error('Bulk tasks: ' + r.status + ' ' + await r.text());
     }
     if (partnerBody.length) {
-      const r = await fetch(`${this.cfg.url}/rest/v1/partner_status?on_conflict=partner_id`, {
+      const r = await this._safeFetch(`${this.cfg.url}/rest/v1/partner_status?on_conflict=partner_id`, {
         method: 'POST', headers: this.headers(), body: JSON.stringify(partnerBody)
       });
       if (!r.ok) throw new Error('Bulk partners: ' + r.status + ' ' + await r.text());
@@ -476,6 +493,14 @@ window.pushAllSupabase = pushAllSupabase;
 window.disconnectSupabase = disconnectSupabase;
 
 // ============ PROGRESSO (localStorage) ============
+// Tarefas já concluídas no mundo real (auto-marcadas no primeiro load por usuário)
+const AUTO_DONE_TASKS = {
+  'W1':       { note: '✅ Revisão sistemática entregue.' },
+  'T2.0':     { note: '✅ Amostras (fr. Hex + AcOEt) já enviadas e recebidas na UFPB.' },
+  'T6.0c-1':  { note: '✅ Amostras já enviadas para UECE — testes: comportamental, toxicidade, nocicepção.' }
+};
+const AUTO_MIGRATION_KEY = 'schedule_migration_v2_2026_06';
+
 function loadProgress() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -483,6 +508,27 @@ function loadProgress() {
   } catch (e) {
     console.warn('Erro ao carregar progresso:', e);
     progress = {};
+  }
+  // Migração: marca automaticamente as tarefas já concluídas no mundo real
+  try {
+    const migrated = localStorage.getItem(AUTO_MIGRATION_KEY);
+    if (!migrated) {
+      let changed = false;
+      Object.entries(AUTO_DONE_TASKS).forEach(([taskId, extra]) => {
+        if (!progress[taskId] || !progress[taskId].done) {
+          progress[taskId] = {
+            done: true,
+            completedAt: new Date().toISOString(),
+            note: extra.note || ''
+          };
+          changed = true;
+        }
+      });
+      if (changed) saveProgress();
+      localStorage.setItem(AUTO_MIGRATION_KEY, '1');
+    }
+  } catch (e) {
+    console.warn('Migração de progresso falhou:', e);
   }
 }
 
@@ -1130,7 +1176,7 @@ function renderStrategy() {
           </li>
           <li class="flex gap-3">
             <i class="fa-solid fa-3 bg-emerald-100 text-emerald-700 rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0 font-bold"></i>
-            <div><strong>Paralelismo inteligente:</strong> caracterização química (LC-MS/GC-MS) corre em paralelo com testes preliminares de matriz Gelatina/PLA.</div>
+            <div><strong>Paralelismo inteligente:</strong> caracterização química (LC-MS/GC-MS, UFPB) corre em paralelo com testes preliminares de NP-PCL e Planejamento Fatorial (DoE com Prof. ALEK).</div>
           </li>
           <li class="flex gap-3">
             <i class="fa-solid fa-4 bg-emerald-100 text-emerald-700 rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0 font-bold"></i>

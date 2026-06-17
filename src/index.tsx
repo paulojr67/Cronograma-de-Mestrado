@@ -240,7 +240,7 @@ app.get('/', (c) => {
             Cronograma elaborado para qualificação de Mestrado — Programa de Pós-Graduação em Nanobiotecnologia
           </p>
           <p class="mt-1">
-            Referências base: DA ROSA et al. (2024) · IMRAN et al. (2025) · RAJKUMAR et al. (2025) · MORAES et al. (2026)
+            Referências base: DA ROSA et al. (2024) · IMRAN et al. (2025) · Metodologia PCL (2026) · MORAES et al. (2026) · Planejamento Fatorial (DoE) com Prof. ALEK
           </p>
         </footer>
       </main>
